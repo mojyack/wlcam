@@ -1,4 +1,4 @@
-const char* yuyv_interleaved_graphic_fragment_shader_source = R"glsl(
+auto yuyv2i_fragment_shader_source = R"glsl(
     #version 330 core
     in vec2               tex_coordinate;
     uniform sampler2DRect tex;

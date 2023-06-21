@@ -3,17 +3,15 @@
 #include <gawl/pixelbuffer.hpp>
 #include <gawl/screen.hpp>
 
-using GraphicGLObject = gawl::internal::GraphicGLObject;
-using TextureBinder   = gawl::internal::TextureBinder;
-
-class YUVPlanarGraphicBase {
+template <size_t ntex, GLuint texformat = GL_TEXTURE_2D>
+class MultiTexGraphicBase {
   private:
     using GL        = gawl::internal::GraphicGLObject;
     using Point     = gawl::Point;
     using Rectangle = gawl::Rectangle;
 
-    GL*                   gl;
-    std::array<GLuint, 3> textures = {0}; // Y, U, V
+    GL*                      gl;
+    std::array<GLuint, ntex> textures = {0};
 
     auto do_draw(gawl::concepts::Screen auto& screen) const -> void {
         const auto vabinder = gl->bind_vao();
@@ -29,9 +27,10 @@ class YUVPlanarGraphicBase {
         auto txbinder_v = bind_texture(2);
 
         const auto prog = gl->get_shader();
-        glUniform1i(glGetUniformLocation(prog, "tex_y"), 0);
-        glUniform1i(glGetUniformLocation(prog, "tex_u"), 1);
-        glUniform1i(glGetUniformLocation(prog, "tex_v"), 2);
+        for(auto i = size_t(0); i < ntex; i += 1) {
+            auto name = std::array{'t', 'e', 'x', '_', char('0' + i), '\0'};
+            glUniform1i(glGetUniformLocation(prog, name.data()), i);
+        }
 
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
@@ -47,13 +46,13 @@ class YUVPlanarGraphicBase {
     int width;
     int height;
 
-    auto bind_texture(const uint32_t number) const -> TextureBinder {
+    auto bind_texture(const uint32_t number) const -> gawl::internal::TextureBinder {
         return textures[number];
     }
 
     auto release_texture() -> void {
         if(textures[0] != 0) {
-            glDeleteTextures(3, textures.data());
+            glDeleteTextures(ntex, textures.data());
         }
     }
 
@@ -64,6 +63,20 @@ class YUVPlanarGraphicBase {
 
     auto get_height(const gawl::concepts::MetaScreen auto& screen) const -> int {
         return height / screen.get_scale();
+    }
+
+    // activate texture unit and bind texture before call this
+    auto update_texture(const int width, const int height, const std::byte* const data, const GLuint pixformat = GL_RED) -> void {
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+        glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        this->width  = width;
+        this->height = height;
+
+        glTexImage2D(texformat, 0, pixformat, this->width, this->height, 0, pixformat, GL_UNSIGNED_BYTE, data);
     }
 
     auto draw(gawl::concepts::Screen auto& screen, const Point& point) -> void {
@@ -89,17 +102,17 @@ class YUVPlanarGraphicBase {
         do_draw(screen);
     }
 
-    auto operator=(YUVPlanarGraphicBase&& o) -> YUVPlanarGraphicBase& {
+    auto operator=(MultiTexGraphicBase&& o) -> MultiTexGraphicBase& {
         release_texture();
         gl       = o.gl;
-        textures = std::exchange(o.textures, {0, 0, 0});
+        textures = std::exchange(o.textures, {});
         width    = o.width;
         height   = o.height;
         return *this;
     }
 
-    YUVPlanarGraphicBase(GL& gl) : gl(&gl) {
-        glGenTextures(3, textures.data());
+    MultiTexGraphicBase(GL& gl) : gl(&gl) {
+        glGenTextures(ntex, textures.data());
         for(auto i = 0; i < 3; i += 1) {
             glActiveTexture(GL_TEXTURE0 + i);
             const auto txbinder = bind_texture(i);
@@ -110,11 +123,11 @@ class YUVPlanarGraphicBase {
         }
     }
 
-    YUVPlanarGraphicBase(YUVPlanarGraphicBase&& o) {
+    MultiTexGraphicBase(MultiTexGraphicBase&& o) {
         *this = std::move(o);
     }
 
-    ~YUVPlanarGraphicBase() {
+    ~MultiTexGraphicBase() {
         release_texture();
     }
 };
