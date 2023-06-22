@@ -1,7 +1,7 @@
 #pragma once
-#include "context.hpp"
-#include "file.hpp"
-#include "remote-server.hpp"
+#include "../context.hpp"
+#include "../file.hpp"
+#include "../remote-server.hpp"
 #include "v4l2.hpp"
 
 class Camera {

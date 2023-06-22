@@ -1,16 +1,20 @@
 #include <chrono>
 #include <filesystem>
+#include <fstream>
 
-#include "assert.hpp"
+#include <sys/poll.h>
+#include <unistd.h>
+
+#include "../assert.hpp"
+#include "../remote-server.hpp"
 #include "camera.hpp"
-#include "remote-server.hpp"
 
 // jpeg.cpp
 auto calc_jpeg_size(const std::byte* const ptr) -> size_t;
-auto decode_jpeg_yuv422_planar(const std::byte* ptr, size_t len) -> std::array<gawl::PixelBuffer, 3>;
+auto decode_jpeg_yuv422_planar(const std::byte* ptr, size_t len) -> std::unique_ptr<Image>;
 
 // yuv.cpp
-auto split_yuv422_interleaved_planar(const std::byte* const ptr, const uint32_t width, const uint32_t height) -> std::array<gawl::PixelBuffer, 3>;
+// auto split_yuv422_interleaved_planar(const std::byte* const ptr, const uint32_t width, const uint32_t height) -> std::array<gawl::PixelBuffer, 3>;
 
 namespace {
 auto save_jpeg_frame(const char* const path, const std::byte* const ptr) -> void {
@@ -58,6 +62,32 @@ struct RecordContext {
     RecordContext(std::string tempdir_)
         : tempdir(std::move(tempdir_)),
           catfile(tempdir + "/concat.txt") {}
+};
+
+class YUYVImage : public Image {
+  private:
+    std::byte* data;
+    size_t     buffer_index;
+    int        width;
+    int        height;
+    int        dev_fd;
+
+  public:
+    auto get_plane(const int num) -> PixelBuffer override {
+        DYN_ASSERT(num == 0, "no such plane");
+        return {width, height, data};
+    }
+
+    YUYVImage(const int width, const int height, std::byte* const data, const int dev_fd, const size_t buffer_index)
+        : data(data),
+          buffer_index(buffer_index),
+          width(width),
+          height(height),
+          dev_fd(dev_fd) {}
+
+    ~YUYVImage() {
+        v4l2::queue_buffer(dev_fd, buffer_index);
+    }
 };
 } // namespace
 
@@ -128,26 +158,19 @@ auto Camera::run() -> void {
         }
 
         // unpack image
-        auto pbufs = std::array<gawl::PixelBuffer, 3>();
+        auto new_image = std::unique_ptr<Image>();
         switch(context.pixel_format) {
         case PixelFormat::MPEG:
-            pbufs = decode_jpeg_yuv422_planar(static_cast<std::byte*>(buffers[index].start), buffers[index].length);
+            new_image = decode_jpeg_yuv422_planar(static_cast<std::byte*>(buffers[index].start), buffers[index].length);
+            v4l2::queue_buffer(fd, index);
             break;
         case PixelFormat::YUYV: {
-            // pbufs = split_yuv422_interleaved_planar(static_cast<std::byte*>(buffers[index].start), width, height);
-            auto buf = std::vector<std::byte>(width * height * 2);
-            memcpy(buf.data(), buffers[index].start, buf.size());
-            pbufs[0] = gawl::PixelBuffer::from_raw(width, height, std::move(buf));
+            new_image = std::make_unique<YUYVImage>(width, height, (std::byte*)buffers[index].start, fd, index);
         } break;
         }
-        v4l2::queue_buffer(fd, index);
 
-        {
-            auto [lock, pixel_buffers] = context.critical_pixel_buffers.access();
-            pixel_buffers.y            = std::move(pbufs[0]);
-            pixel_buffers.u            = std::move(pbufs[1]);
-            pixel_buffers.v            = std::move(pbufs[2]);
-        }
+        auto [lock, image] = context.critical_image.access();
+        image              = std::move(new_image);
     }
     if(event_fifo) {
         event_fifo.send_event(RemoteEvents::Bye{});
