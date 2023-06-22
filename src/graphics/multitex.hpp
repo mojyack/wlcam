@@ -1,10 +1,9 @@
 #pragma once
 #include <gawl/graphic-globject.hpp>
-#include <gawl/pixelbuffer.hpp>
 #include <gawl/screen.hpp>
 
 template <size_t ntex, GLuint texformat = GL_TEXTURE_2D>
-class MultiTexGraphicBase {
+class MultiTex {
   private:
     using GL        = gawl::internal::GraphicGLObject;
     using Point     = gawl::Point;
@@ -66,11 +65,11 @@ class MultiTexGraphicBase {
     }
 
     // activate texture unit and bind texture before call this
-    auto update_texture(const int width, const int height, const std::byte* const data, const GLuint pixformat = GL_RED) -> void {
+    auto update_texture(const int width, const int height, const int stride, const std::byte* const data, const GLuint pixformat = GL_RED) -> void {
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
         glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, stride == 0 ? width : stride);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         this->width  = width;
@@ -102,7 +101,7 @@ class MultiTexGraphicBase {
         do_draw(screen);
     }
 
-    auto operator=(MultiTexGraphicBase&& o) -> MultiTexGraphicBase& {
+    auto operator=(MultiTex&& o) -> MultiTex& {
         release_texture();
         gl       = o.gl;
         textures = std::exchange(o.textures, {});
@@ -111,7 +110,7 @@ class MultiTexGraphicBase {
         return *this;
     }
 
-    MultiTexGraphicBase(GL& gl) : gl(&gl) {
+    MultiTex(GL& gl) : gl(&gl) {
         glGenTextures(ntex, textures.data());
         for(auto i = 0; i < 3; i += 1) {
             glActiveTexture(GL_TEXTURE0 + i);
@@ -123,12 +122,11 @@ class MultiTexGraphicBase {
         }
     }
 
-    MultiTexGraphicBase(MultiTexGraphicBase&& o) {
+    MultiTex(MultiTex&& o) {
         *this = std::move(o);
     }
 
-    ~MultiTexGraphicBase() {
+    ~MultiTex() {
         release_texture();
     }
 };
-

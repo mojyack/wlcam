@@ -1,4 +1,4 @@
-auto nv12_fragment_shader_source = R"glsl(
+auto yuv420sp_fragment_shader_source = R"glsl(
     #version 330 core
     in vec2           tex_coordinate;
     uniform sampler2D tex_0; // y

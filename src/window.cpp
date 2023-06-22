@@ -36,37 +36,12 @@ auto Window::refresh_callback() -> void {
     }
 
     // render
-    auto new_pixel_buffers = PixelBuffers();
-    {
-        auto [lock, pixel_buffers] = context.critical_pixel_buffers.access();
-        if(!pixel_buffers.y.empty()) {
-            new_pixel_buffers = std::move(pixel_buffers);
-        }
-    }
-    if(!new_pixel_buffers.y.empty()) {
-        switch(context.pixel_format) {
-        case PixelFormat::MPEG:
-            if(auto ptr = graphic.get<YUYVPlanarGraphic>(); ptr != nullptr) {
-                ptr->update_texture(new_pixel_buffers.y, new_pixel_buffers.u, new_pixel_buffers.v);
-            } else {
-                graphic.emplace<YUYVPlanarGraphic>(new_pixel_buffers.y, new_pixel_buffers.u, new_pixel_buffers.v);
-            }
-            break;
-        case PixelFormat::YUYV:
-            if(auto ptr = graphic.get<YUYVInterleavedGraphic>(); ptr != nullptr) {
-                ptr->update_texture(new_pixel_buffers.y);
-            } else {
-                graphic.emplace<YUYVInterleavedGraphic>(new_pixel_buffers.y);
-            }
-            break;
-        }
-    }
-
     gawl::clear_screen({0, 0, 0, 0});
     const auto [screen_width, screen_height] = window.get_window_size();
     const auto screen_rect                   = gawl::Rectangle{{0, 0}, {1. * screen_width, 1. * screen_height}};
-    if(graphic.is_valid()) {
-        graphic.apply([this, screen_rect](auto& g) { g.draw_fit_rect(window, screen_rect); });
+    const auto graphic = context.critical_graphic;
+    if(graphic) {
+        graphic->apply([this, screen_rect](auto& g) { g.draw_fit_rect(window, screen_rect); });
     }
 
     gawl::mask_alpha();

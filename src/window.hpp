@@ -4,16 +4,10 @@
 #include <gawl/wayland/gawl.hpp>
 
 #include "context.hpp"
-#include "graphics/yuyv-interleaved-graphic.hpp"
-#include "graphics/yuyv-planar-graphic.hpp"
-#include "util/variant.hpp"
-
-using GraphicLike = Variant<YUYVPlanarGraphic, YUYVInterleavedGraphic>;
 
 class Window {
   private:
     gawl::Window<Window>& window;
-    GraphicLike           graphic;
     Context&              context;
     gawl::Point           button_pos;
     gawl::Point           cursor_pos;
@@ -29,6 +23,10 @@ class Window {
     auto calc_button_pos() -> gawl::Point;
 
   public:
+    auto get_window() -> gawl::Window<Window>& {
+        return window;
+    }
+
     auto refresh_callback() -> void;
 
     auto pointer_move_callback(const gawl::Point& point) -> void;

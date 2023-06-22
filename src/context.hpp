@@ -1,8 +1,8 @@
 #pragma once
-#include <gawl/pixelbuffer.hpp>
-
-#include "pixel-format.hpp"
-#include "util/thread.hpp"
+#include "graphics/planar.hpp"
+#include "graphics/yuv420sp.hpp"
+#include "graphics/yuv422i.hpp"
+#include "util/variant.hpp"
 
 enum class Command {
     None,
@@ -14,15 +14,18 @@ enum class Command {
     StopRecordingDone,
 };
 
-struct PixelBuffers {
-    gawl::PixelBuffer y;
-    gawl::PixelBuffer u;
-    gawl::PixelBuffer v;
+using GraphicLike = Variant<PlanarGraphic, YUV420spGraphic, YUV422iGraphic>;
+
+struct Control {
+    std::string name;
+    int         min;
+    int         max;
+    int         current;
 };
 
 struct Context {
-    Critical<PixelBuffers> critical_pixel_buffers;
-    PixelFormat            pixel_format;
-    Command                ui_command;     // camera -> ui
-    Command                camera_command; // ui -> camera
+    std::shared_ptr<GraphicLike> critical_graphic;
+    std::vector<Control>         controls;
+    Command                      ui_command;     // camera -> ui
+    Command                      camera_command; // ui -> camera
 };
