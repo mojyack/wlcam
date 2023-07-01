@@ -18,27 +18,23 @@ class MultiTex {
         const auto shbinder = gl->use_shader();
         const auto fbbinder = screen.prepare();
 
-        glActiveTexture(GL_TEXTURE0);
-        auto txbinder_y = bind_texture(0);
-        glActiveTexture(GL_TEXTURE1);
-        auto txbinder_u = bind_texture(1);
-        glActiveTexture(GL_TEXTURE2);
-        auto txbinder_v = bind_texture(2);
+        for(auto i = 0u; i < ntex; i += 1) {
+            glActiveTexture(GL_TEXTURE0 + i);
+            glBindTexture(GL_TEXTURE_2D, textures[i]);
+        }
 
         const auto prog = gl->get_shader();
-        for(auto i = size_t(0); i < ntex; i += 1) {
+        for(auto i = 0u; i < ntex; i += 1) {
             auto name = std::array{'t', 'e', 'x', '_', char('0' + i), '\0'};
             glUniform1i(glGetUniformLocation(prog, name.data()), i);
         }
 
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-        glActiveTexture(GL_TEXTURE2);
-        txbinder_v.unbind();
-        glActiveTexture(GL_TEXTURE1);
-        txbinder_u.unbind();
-        glActiveTexture(GL_TEXTURE0);
-        txbinder_y.unbind();
+        for(auto i = int(ntex - 1); i >= 0; i -= 1) {
+            glActiveTexture(GL_TEXTURE0 + i);
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
     }
 
   protected:
@@ -74,7 +70,6 @@ class MultiTex {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         this->width  = width;
         this->height = height;
-
         glTexImage2D(texformat, 0, pixformat, this->width, this->height, 0, pixformat, GL_UNSIGNED_BYTE, data);
     }
 
@@ -112,7 +107,7 @@ class MultiTex {
 
     MultiTex(GL& gl) : gl(&gl) {
         glGenTextures(ntex, textures.data());
-        for(auto i = 0; i < 3; i += 1) {
+        for(auto i = 0u; i < ntex; i += 1) {
             glActiveTexture(GL_TEXTURE0 + i);
             const auto txbinder = bind_texture(i);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);

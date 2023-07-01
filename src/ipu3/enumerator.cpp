@@ -81,7 +81,7 @@ auto main() -> int {
 
     stdio::println("the csi2 has ", sensors.size(), " sensors");
     for(auto i = 0u; i < sensors.size(); i += 1) {
-        stdio::println(i, " ", sensors[i]->name);
+        stdio::println("  ", i, " ", sensors[i]->name);
     }
     const auto sensor = sensors[read_sized("select sensor", sensors.size())];
 
@@ -97,13 +97,13 @@ auto main() -> int {
     const auto sensor_formats = cio2.get_formats();
     stdio::println("the sensor suppors ", sensor_formats.size(), " formats");
     for(auto i = 0u; i < sensor_formats.size(); i += 1) {
-        stdio::println(i, " ", sensor_formats[i].code);
+        stdio::println("  ", i, " ", sensor_formats[i].code);
     }
     const auto& sensor_format = sensor_formats[read_sized("select media bus code", sensor_formats.size())];
 
     stdio::println("the sensor suppors ", sensor_format.sizes.size(), " output sizes");
     for(auto i = 0u; i < sensor_format.sizes.size(); i += 1) {
-        stdio::println(i, " ", sensor_format.sizes[i].max.width, "x", sensor_format.sizes[i].max.height);
+        stdio::println("  ", i, " ", sensor_format.sizes[i].max.width, "x", sensor_format.sizes[i].max.height);
     }
     const auto& sensor_format_size = sensor_format.sizes[read_sized("select output size", sensor_format.sizes.size())];
 
@@ -121,6 +121,12 @@ auto main() -> int {
         " --sensor-height ", sensor_format_size.max.height,
         " --width ", width,
         " --height ", height);
+
+    stdio::println("controls available for these devices:");
+    stdio::println("  ", cio2.sensor.dev_node);
+    if(cio2.sensor.lens) {
+        stdio::println("  ", cio2.sensor.lens->dev_node);
+    }
 
     return 0;
 }

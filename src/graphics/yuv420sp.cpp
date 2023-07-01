@@ -9,18 +9,18 @@ auto yuv420sp_fragment_shader_source = R"glsl(
         float u = texture(tex_1, tex_coordinate).r - 0.5;
         float v = texture(tex_1, tex_coordinate).g - 0.5;
 
-        if(tex_coordinate.y < 0.5) {
-            float e;
-            if(tex_coordinate.x < 1.0 / 3) {
-                e = u;
-            } else if(tex_coordinate.x < 2.0 / 3) {
-                e = y;
-            } else {
-                e = v;
-            }
-            color = vec4(e, e, e, 1);
-            return;
-        }
+        // if(tex_coordinate.y < 0.5) {
+        //     float e;
+        //     if(tex_coordinate.x < 1.0 / 3) {
+        //         e = u;
+        //     } else if(tex_coordinate.x < 2.0 / 3) {
+        //         e = y;
+        //     } else {
+        //         e = v;
+        //     }
+        //     color = vec4(e, e, e, 1);
+        //     return;
+        // }
 
         float r = y + 1.40200 * v;
         float g = y - 0.34414 * u - 0.71414 * v;

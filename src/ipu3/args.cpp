@@ -9,6 +9,7 @@ const auto help = R"str(usage: wlcam-ipu3 [FLAG|OPTION]...
 flags:
   -h, --help                   print this message
 options:
+  -o, --output PATH            output directory
   --cio2 MEDIA_DEV             (device profile)  
   --imgu MEDIA_DEV             (device profile)
   --cio2-entity ENT_NAME       (device profile)
@@ -48,6 +49,9 @@ auto parse_args(const int argc, const char* const argv[]) -> Args {
         if(arg == "-h" || arg == "--help") {
             print(help);
             exit(0);
+        } else if(arg == "-o" || arg == "--output") {
+            increment(i);
+            args.savedir = argv[i];
         } else if(arg == "--cio2") {
             increment(i);
             args.cio2_devnode = argv[i];
@@ -78,19 +82,23 @@ auto parse_args(const int argc, const char* const argv[]) -> Args {
         }
     }
 
-    if(args.cio2_devnode.empty()) {
+    if(args.savedir == nullptr) {
+        print("no --output argument");
+        exit(0);
+    }
+    if(args.cio2_devnode == nullptr) {
         print("no --cio2 argument");
         exit(0);
     }
-    if(args.imgu_devnode.empty()) {
+    if(args.imgu_devnode == nullptr) {
         print("no --imgu argument");
         exit(0);
     }
-    if(args.cio2_entity.empty()) {
+    if(args.cio2_entity == nullptr) {
         print("no --cio2-entity argument");
         exit(0);
     }
-    if(args.imgu_entity.empty()) {
+    if(args.imgu_entity == nullptr) {
         print("no --imgu-entity argument");
         exit(0);
     }

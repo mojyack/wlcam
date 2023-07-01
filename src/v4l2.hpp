@@ -71,4 +71,9 @@ auto start_stream(int fd, v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE) -> v
 
 auto stop_stream(int fd) -> void;
 
+auto query_controls(const int fd) -> std::vector<v4l2_queryctrl>;
+
+auto set_control(const int fd, const uint32_t cid, const int32_t value) -> void;
+
+auto set_selection_subdev(int fd, uint32_t pad_index, uint32_t target, int32_t x, int32_t y, uint32_t w, uint32_t h) -> void;
 } // namespace v4l2

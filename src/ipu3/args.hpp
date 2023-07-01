@@ -3,10 +3,11 @@
 
 namespace ipu3 {
 struct Args {
-    std::string cio2_devnode;
-    std::string imgu_devnode;
-    std::string cio2_entity;
-    std::string imgu_entity;
+    const char* savedir = nullptr;
+    const char* cio2_devnode;
+    const char* imgu_devnode;
+    const char* cio2_entity;
+    const char* imgu_entity;
     int         sensor_mbus_code = 0;
     int         sensor_width     = 0;
     int         sensor_height    = 0;

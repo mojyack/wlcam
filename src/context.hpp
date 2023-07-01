@@ -16,16 +16,8 @@ enum class Command {
 
 using GraphicLike = Variant<PlanarGraphic, YUV420spGraphic, YUV422iGraphic>;
 
-struct Control {
-    std::string name;
-    int         min;
-    int         max;
-    int         current;
-};
-
 struct Context {
     std::shared_ptr<GraphicLike> critical_graphic;
-    std::vector<Control>         controls;
     Command                      ui_command;     // camera -> ui
     Command                      camera_command; // ui -> camera
 };

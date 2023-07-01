@@ -48,7 +48,7 @@ auto Sensor::enum_pad_sizes(const uint32_t mbus_code) const -> std::vector<SizeR
     return ret;
 }
 
-auto Sensor::create(const Entity& sensor) -> Sensor {
+auto Sensor::create(MediaDevice& media, const Entity& sensor) -> Sensor {
     DYN_ASSERT(sensor.function == MEDIA_ENT_F_CAM_SENSOR || sensor.function == MEDIA_ENT_F_PROC_VIDEO_ISP);
     const int fd = open(sensor.dev_node.data(), O_RDWR);
     DYN_ASSERT(fd >= 0);
@@ -62,7 +62,14 @@ auto Sensor::create(const Entity& sensor) -> Sensor {
     }
     DYN_ASSERT(pad_index != -1);
 
-    return Sensor{&sensor, FileDescriptor(fd), pad_index};
+    auto lens = std::optional<Lens>();
+    if(!sensor.ancillary_entities.empty()) {
+        const auto& dev_node = media.find_entity_by_id(sensor.ancillary_entities[0])->dev_node;
+        const auto  fd       = open(media.find_entity_by_id(sensor.ancillary_entities[0])->dev_node.c_str(), O_RDWR);
+        lens.emplace(Lens{dev_node, FileDescriptor{fd}});
+    }
+
+    return Sensor{&sensor, pad_index, sensor.dev_node, FileDescriptor(fd), std::move(lens)};
 }
 
 auto CIO2Device::init(Entity* const csi2) -> void {
@@ -76,7 +83,7 @@ auto CIO2Device::init(Entity* const csi2) -> void {
     cio2 = FileDescriptor(open(csi2->dev_node.data(), O_RDWR));
     DYN_ASSERT(cio2 >= 0);
 
-    this->sensor = Sensor::create(*sensor);
+    this->sensor = Sensor::create(*media, *sensor);
 
     const auto output = media->find_entity_by_name(build_string("ipu3-cio2 ", csi2->name.back()));
     this->output      = FileDescriptor(open(output->dev_node.data(), O_RDWR));
@@ -102,4 +109,4 @@ auto CIO2Device::get_formats() const -> std::vector<Format> {
 
     return ret;
 }
-} // namespace cio2
+} // namespace ipu3::cio2

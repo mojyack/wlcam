@@ -11,7 +11,7 @@ template <class... Args>
 auto xioctl(const int fd, const uint64_t request, Args&&... args) -> int {
     int r;
     do {
-//        r = iocd::ioctl(stdout, fd, request, std::forward<Args>(args)...);
+        //        r = iocd::ioctl(stdout, fd, request, std::forward<Args>(args)...);
         r = ioctl(fd, request, std::forward<Args>(args)...);
     } while(r == -1 && errno == EINTR);
     return r;
@@ -294,5 +294,46 @@ auto start_stream(const int fd, v4l2_buf_type type) -> void {
 auto stop_stream(const int fd) -> void {
     auto type = v4l2_buf_type(V4L2_BUF_TYPE_VIDEO_CAPTURE);
     DYN_ASSERT(xioctl(fd, VIDIOC_STREAMOFF, &type) != -1);
+}
+
+auto query_controls(const int fd) -> std::vector<v4l2_queryctrl> {
+    auto query = v4l2_queryctrl();
+    query.id   = V4L2_CTRL_CLASS_USER | V4L2_CTRL_FLAG_NEXT_CTRL;
+    while(0 == ioctl(fd, VIDIOC_QUERYCTRL, &query)) {
+        if(V4L2_CTRL_ID2CLASS(query.id) != V4L2_CTRL_CLASS_USER)
+            break;
+        if(query.flags & V4L2_CTRL_FLAG_DISABLED)
+            continue;
+
+        printf("Control %s\n", query.name);
+
+        query.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
+    }
+
+    auto ret = std::vector<v4l2_queryctrl>();
+    for(auto id = V4L2_CID_BASE + 1; id < V4L2_CID_LASTP1; id += 1) {
+        query.id = id;
+        if(xioctl(fd, VIDIOC_QUERYCTRL, &query) == 0) {
+            ret.emplace_back(query);
+        }
+    }
+    return ret;
+}
+
+auto set_control(const int fd, const uint32_t cid, const int32_t value) -> void {
+    auto ctrl = v4l2_control{cid, value};
+    DYN_ASSERT(xioctl(fd, VIDIOC_S_CTRL, &ctrl) != -1);
+}
+
+auto set_selection_subdev(const int fd, const uint32_t pad_index, const uint32_t target, const int32_t x, const int32_t y, const uint32_t w, const uint32_t h) -> void {
+    auto sel = v4l2_subdev_selection();
+
+    sel.which  = V4L2_SUBDEV_FORMAT_ACTIVE;
+    sel.pad    = pad_index;
+    sel.target = target;
+    sel.flags  = 0;
+    sel.r      = v4l2_rect{x, y, w, h};
+
+    DYN_ASSERT(xioctl(fd, VIDIOC_SUBDEV_S_SELECTION, &sel) == 0);
 }
 } // namespace v4l2
