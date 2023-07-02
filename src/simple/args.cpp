@@ -1,23 +1,23 @@
 #include <string_view>
 
+#include "../util/charconv.hpp"
+#include "../util/error.hpp"
 #include "args.hpp"
-#include "util/charconv.hpp"
-#include "util/error.hpp"
 
 namespace {
 const auto help = R"str(usage: wl-cam [FLAG|OPTION]...
 flags:
-  -h, --help                print this message
-  -l, --list-formats        list supported formats of the video device
-  -m, --movie               enable movie mode               
+  -h, --help                    print this message
+  -l, --list-formats            list supported formats of the video device
+  -m, --movie                   enable movie mode
 options:
-  -d, --device PATH         video device (/dev/video0)
-  -s, --server PATH         create fifo for companion
-  -o, --output PATH         output directory
-  --width WIDTH             horizontal resolution (1280)
-  --height HEIGHT           vertical resolution (720)
-  --fps FPS                 refresh rate (30)         
-  --pix-format {mpeg|yuyv}  pixel format (mpeg)
+  -d, --device PATH             video device (/dev/video0)
+  -s, --server PATH             create fifo for companion
+  -o, --output PATH             output directory
+  --width WIDTH                 horizontal resolution (1280)
+  --height HEIGHT               vertical resolution (720)
+  --fps FPS                     refresh rate (30)
+  --pix-format {MJPG|YUYV|NV12} pixel format (mpeg)
 )str";
 
 template <class T>
@@ -71,14 +71,11 @@ auto parse_args(const int argc, const char* const argv[]) -> Args {
             args.fps = parse<int>(argv[i]);
         } else if(arg == "--pix-format") {
             increment(i);
-            if(const auto str = std::string_view(argv[i]); str == "mpeg") {
-                args.pixel_format = PixelFormat::MPEG;
-            } else if(str == "yuyv") {
-                args.pixel_format = PixelFormat::YUYV;
-            } else {
-                print("unknown pixel format");
+            if(strlen(argv[i]) != 4) {
+                print("invalid pixel format");
                 exit(1);
             }
+            args.pixel_format = v4l2::fourcc(argv[i]);
         }
     }
 

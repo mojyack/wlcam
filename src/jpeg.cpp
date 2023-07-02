@@ -63,9 +63,7 @@ loop_sos:
     goto loop_sos;
 }
 
-auto decode_jpeg_to_yuvp(const std::byte* const ptr, const size_t len) -> std::array<gawl::PixelBuffer, 3> {
-    constexpr auto size_denominator = 4;
-
+auto decode_jpeg_to_yuvp(const std::byte* const ptr, const size_t len, const size_t downscale_factor) -> DecodeResult {
     const auto tj = tjInitDecompress();
     DYN_ASSERT(tj != NULL);
 
@@ -75,21 +73,23 @@ auto decode_jpeg_to_yuvp(const std::byte* const ptr, const size_t len) -> std::a
     DYN_ASSERT(tjDecompressHeader2(tj, (unsigned char*)ptr, len, &width, &height, &subsample) == 0);
     const auto [ppc_x, ppc_y] = tjsample_to_ppc(subsample);
 
-    const auto bufsize_y = tjPlaneSizeYUV(0, width / size_denominator, 0, height / size_denominator, subsample);
-    const auto bufsize_u = tjPlaneSizeYUV(1, width / size_denominator, 0, height / size_denominator, subsample);
-    const auto bufsize_v = tjPlaneSizeYUV(2, width / size_denominator, 0, height / size_denominator, subsample);
+    const auto bufsize_y = tjPlaneSizeYUV(0, width / downscale_factor, 0, height / downscale_factor, subsample);
+    const auto bufsize_u = tjPlaneSizeYUV(1, width / downscale_factor, 0, height / downscale_factor, subsample);
+    const auto bufsize_v = tjPlaneSizeYUV(2, width / downscale_factor, 0, height / downscale_factor, subsample);
 
     auto buf_y = std::vector<std::byte>(bufsize_y);
     auto buf_u = std::vector<std::byte>(bufsize_u);
     auto buf_v = std::vector<std::byte>(bufsize_v);
     auto buf   = std::array{buf_y.data(), buf_u.data(), buf_v.data()};
-    DYN_ASSERT(tjDecompressToYUVPlanes(tj, (unsigned char*)ptr, len, (unsigned char**)(buf.data()), width / size_denominator, NULL, height / size_denominator, 0) == 0);
+    DYN_ASSERT(tjDecompressToYUVPlanes(tj, (unsigned char*)ptr, len, (unsigned char**)(buf.data()), width / downscale_factor, NULL, height / downscale_factor, 0) == 0);
     tjDestroy(tj);
 
     return {
-        gawl::PixelBuffer::from_raw(width / size_denominator, height / size_denominator, std::move(buf_y)),
-        gawl::PixelBuffer::from_raw(width / size_denominator / ppc_x, height / size_denominator / ppc_y, std::move(buf_u)),
-        gawl::PixelBuffer::from_raw(width / size_denominator / ppc_x, height / size_denominator / ppc_y, std::move(buf_v)),
+        std::move(buf_y),
+        std::move(buf_u),
+        std::move(buf_v),
+        ppc_x,
+        ppc_y,
     };
 }
 

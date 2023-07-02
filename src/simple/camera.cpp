@@ -6,20 +6,15 @@
 #include <unistd.h>
 
 #include "../assert.hpp"
+#include "../jpeg.hpp"
 #include "../remote-server.hpp"
+#include "../yuv.hpp"
 #include "camera.hpp"
-
-// jpeg.cpp
-auto calc_jpeg_size(const std::byte* const ptr) -> size_t;
-auto decode_jpeg_yuv422_planar(const std::byte* ptr, size_t len) -> std::unique_ptr<Image>;
-
-// yuv.cpp
-// auto split_yuv422_interleaved_planar(const std::byte* const ptr, const uint32_t width, const uint32_t height) -> std::array<gawl::PixelBuffer, 3>;
 
 namespace {
 auto save_jpeg_frame(const char* const path, const std::byte* const ptr) -> void {
     const auto fd   = open(path, O_RDWR | O_CREAT, 0644);
-    const auto size = calc_jpeg_size(ptr);
+    const auto size = jpg::calc_jpeg_size(ptr);
     DYN_ASSERT(write(fd, ptr, size) == ssize_t(size));
     close(fd);
 }
@@ -63,32 +58,6 @@ struct RecordContext {
         : tempdir(std::move(tempdir_)),
           catfile(tempdir + "/concat.txt") {}
 };
-
-class YUYVImage : public Image {
-  private:
-    std::byte* data;
-    size_t     buffer_index;
-    int        width;
-    int        height;
-    int        dev_fd;
-
-  public:
-    auto get_plane(const int num) -> PixelBuffer override {
-        DYN_ASSERT(num == 0, "no such plane");
-        return {width, height, data};
-    }
-
-    YUYVImage(const int width, const int height, std::byte* const data, const int dev_fd, const size_t buffer_index)
-        : data(data),
-          buffer_index(buffer_index),
-          width(width),
-          height(height),
-          dev_fd(dev_fd) {}
-
-    ~YUYVImage() {
-        v4l2::queue_buffer(dev_fd, buffer_index);
-    }
-};
 } // namespace
 
 auto Camera::run() -> void {
@@ -103,9 +72,18 @@ auto Camera::run() -> void {
         event_fifo.send_event(RemoteEvents::Configure{.fps = int(fps)});
     }
 
+    const auto fmt            = v4l2::get_current_format(fd);
+    auto       window_context = window.fork_context();
+    auto       ubuf           = (std::byte*)(nullptr);
+    auto       vbuf           = (std::byte*)(nullptr);
+    if(fmt.pixelformat == v4l2::fourcc("NV12")) {
+        ubuf = new std::byte[height / 4 * width];
+        vbuf = new std::byte[height / 4 * width];
+    }
+
     while(!finish) {
         DYN_ASSERT(poll(fds.data(), 1, 0) != -1);
-        const auto index = v4l2::dequeue_buffer(fd);
+        const auto index = v4l2::dequeue_buffer(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE);
 
         // if recording, save elapsed time
         if(record_context) {
@@ -115,18 +93,41 @@ auto Camera::run() -> void {
         // proc command
         switch(std::exchange(context.camera_command, Command::None)) {
         case Command::TakePhoto: {
-            switch(context.pixel_format) {
-            case PixelFormat::MPEG: {
-                const auto path = file_manager.get_next_path().string() + ".jpg";
-                save_jpeg_frame(path.data(), static_cast<const std::byte*>(buffers[index].start));
+            const auto path = file_manager.get_next_path().string() + ".jpg";
+            const auto buf  = std::bit_cast<const std::byte*>(buffers[index].start);
+            switch(fmt.pixelformat) {
+            case v4l2::fourcc("MJPG"): {
+                save_jpeg_frame(path.data(), buf);
                 context.ui_command = Command::TakePhotoDone;
             } break;
-            case PixelFormat::YUYV:
-                // TODO implement yuyv save
-                break;
+            case v4l2::fourcc("YUYV"): {
+                const auto [ybuf, ubuf, vbuf] = yuv::yuv422i_to_yuv422p(buf, width, height, fmt.bytesperline);
+
+                const auto [jpegbuf, jpegsize] = jpg::encode_yuvp_to_jpeg(width, height, fmt.bytesperline / 2, 2, 1, ybuf.data(), ubuf.data(), vbuf.data());
+                const auto fd                  = open(path.c_str(), O_RDWR | O_CREAT, 0644);
+                DYN_ASSERT(write(fd, jpegbuf.get(), jpegsize) == ssize_t(jpegsize));
+                close(fd);
+
+                context.ui_command = Command::TakePhotoDone;
+            } break;
+            case v4l2::fourcc("NV12"): {
+                const auto uvbuf = buf + fmt.bytesperline * height;
+                yuv::yuv420sp_uvsp_to_uvp(uvbuf, ubuf, vbuf, width, height, fmt.bytesperline);
+
+                const auto [jpegbuf, jpegsize] = jpg::encode_yuvp_to_jpeg(width, height, fmt.bytesperline, 2, 2, buf, ubuf, vbuf);
+                const auto fd                  = open(path.c_str(), O_RDWR | O_CREAT, 0644);
+                DYN_ASSERT(write(fd, jpegbuf.get(), jpegsize) == ssize_t(jpegsize));
+                close(fd);
+
+                context.ui_command = Command::TakePhotoDone;
+            } break;
             }
         } break;
         case Command::StartRecording: {
+            if(fmt.pixelformat != v4l2::fourcc("MJPG")) {
+                print("currently movie is only supported in mpeg format");
+                break;
+            }
             auto path = file_manager.get_next_path().string();
             std::filesystem::create_directories(path);
             if(event_fifo) {
@@ -136,6 +137,9 @@ auto Camera::run() -> void {
             context.ui_command = Command::StartRecordingDone;
         } break;
         case Command::StopRecording: {
+            if(fmt.pixelformat != v4l2::fourcc("MJPG")) {
+                break;
+            }
             if(event_fifo) {
                 const auto path = std::move(record_context->tempdir);
                 record_context.reset();
@@ -158,19 +162,27 @@ auto Camera::run() -> void {
         }
 
         // unpack image
-        auto new_image = std::unique_ptr<Image>();
-        switch(context.pixel_format) {
-        case PixelFormat::MPEG:
-            new_image = decode_jpeg_yuv422_planar(static_cast<std::byte*>(buffers[index].start), buffers[index].length);
-            v4l2::queue_buffer(fd, index);
-            break;
-        case PixelFormat::YUYV: {
-            new_image = std::make_unique<YUYVImage>(width, height, (std::byte*)buffers[index].start, fd, index);
+        auto img = std::shared_ptr<GraphicLike>();
+        switch(fmt.pixelformat) {
+        case v4l2::fourcc("MJPG"): {
+            constexpr auto downscale_factor = 4;
+            const auto     bufs             = jpg::decode_jpeg_to_yuvp(static_cast<std::byte*>(buffers[index].start), buffers[index].length, downscale_factor);
+            img.reset(new GraphicLike(Tag<PlanarGraphic>(), width / downscale_factor, height / downscale_factor, fmt.bytesperline, bufs.ppc_x, bufs.ppc_y, bufs.y.data(), bufs.u.data(), bufs.v.data()));
+        } break;
+        case v4l2::fourcc("YUYV"): {
+            img.reset(new GraphicLike(Tag<YUV422iGraphic>(), width, height, fmt.bytesperline, static_cast<std::byte*>(buffers[index].start)));
+        } break;
+        case v4l2::fourcc("NV12"): {
+            const auto buf    = std::bit_cast<std::byte*>(buffers[index].start);
+            const auto stride = fmt.bytesperline;
+            auto       img    = std::shared_ptr<GraphicLike>(new GraphicLike(Tag<YUV420spGraphic>(), width, height, stride, buf, buf + stride * height));
         } break;
         }
 
-        auto [lock, image] = context.critical_image.access();
-        image              = std::move(new_image);
+        v4l2::queue_buffer(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, index);
+
+        window_context.flush();
+        std::swap(context.critical_graphic, img);
     }
     if(event_fifo) {
         event_fifo.send_event(RemoteEvents::Bye{});
@@ -181,9 +193,10 @@ auto Camera::finish_thread() -> void {
     finish = true;
 }
 
-Camera::Camera(const int fd, v4l2::Buffer* const buffers, const uint32_t width, const uint32_t height, const uint32_t fps, const FileManager& file_manager, Context& context, RemoteServer& event_fifo)
+Camera::Camera(const int fd, v4l2::Buffer* const buffers, const uint32_t width, const uint32_t height, const uint32_t fps, gawl::Window<Window>& window, const FileManager& file_manager, Context& context, RemoteServer& event_fifo)
     : buffers(buffers),
       file_manager(file_manager),
+      window(window),
       context(context),
       event_fifo(event_fifo),
       fd(fd),

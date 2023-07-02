@@ -101,13 +101,12 @@ auto list_formats(const int fd, const v4l2_buf_type buffer_type, const uint32_t 
     }
 }
 
-auto get_current_format(const int fd, uint32_t& width, uint32_t& height) -> void {
+auto get_current_format(const int fd) -> v4l2_pix_format {
     auto fmt = v4l2_format{};
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
     DYN_ASSERT(xioctl(fd, VIDIOC_G_FMT, &fmt) != -1);
-    width  = fmt.fmt.pix.width;
-    height = fmt.fmt.pix.height;
+    return fmt.fmt.pix;
 }
 
 auto set_format(const int fd, const uint32_t pixelformat, const uint32_t width, const uint32_t height) -> v4l2_pix_format {

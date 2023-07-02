@@ -9,6 +9,10 @@
 #include "fd.hpp"
 
 namespace v4l2 {
+constexpr auto fourcc(const char c[5]) -> uint32_t {
+    return v4l2_fourcc(c[0], c[1], c[2], c[3]);
+}
+
 struct Buffer {
     void*  start = nullptr;
     size_t length;
@@ -41,7 +45,7 @@ auto list_formats(int fd, uint32_t buffer_type, uint32_t mbus_code) -> void;
 
 auto list_formats(const int fd, const v4l2_buf_type buffer_type, const uint32_t mbus_code) -> void;
 
-auto get_current_format(int fd, uint32_t& width, uint32_t& height) -> void;
+auto get_current_format(int fd) -> v4l2_pix_format;
 
 auto set_format(int fd, uint32_t pixelformat, uint32_t width, uint32_t height) -> v4l2_pix_format;
 

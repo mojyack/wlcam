@@ -20,8 +20,8 @@ class YUV422iGraphic : public gawl::internal::GraphicBase<gawl::internal::Graphi
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 2);
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, stride == 0 ? width : stride);
-        glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RG, this->width, this->height, 0, GL_RG, GL_UNSIGNED_BYTE, yuv);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, stride == 0 ? width : stride / 2);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RG, this->width, this->height, 0, GL_RG, GL_UNSIGNED_BYTE, yuv);
     }
 
     YUV422iGraphic(const int width, const int height, const int stride, const std::byte* const yuv)

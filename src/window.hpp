@@ -1,3 +1,4 @@
+#pragma once
 #define GAWL_MOUSE
 // #define GAWL_KEYCODE
 #include <gawl/graphic.hpp>

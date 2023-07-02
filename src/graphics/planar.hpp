@@ -1,5 +1,6 @@
 // generic planar
 // YYYY.... U(U...).... V(V...)....
+// ppc: pixel per chrominance
 
 #pragma once
 #include "multitex.hpp"
@@ -11,31 +12,9 @@ inline auto init_planar_graphic_globject() -> void {
     planar_globject = new gawl::internal::GraphicGLObject(gawl::internal::graphic_vertex_shader_source, planar_fragment_shader_source);
 }
 
-enum class PlanarType {
-    P444,
-    P422,
-    P420,
-};
-
 class PlanarGraphic : public MultiTex<3> {
   public:
-    auto update_texture(const int width, const int height, const int stride, const PlanarType planar_type, const std::byte* const y, const std::byte* const u, const std::byte* const v) -> void {
-        auto ppc_x = int(); // pixel per chrominance
-        auto ppc_y = int();
-        switch(planar_type) {
-        case PlanarType::P444:
-            ppc_x = 1;
-            ppc_y = 1;
-            break;
-        case PlanarType::P422:
-            ppc_x = 2;
-            ppc_y = 1;
-            break;
-        case PlanarType::P420:
-            ppc_x = 2;
-            ppc_y = 2;
-            break;
-        }
+    auto update_texture(const int width, const int height, const int stride, const int ppc_x, const int ppc_y, const std::byte* const y, const std::byte* const u, const std::byte* const v) -> void {
         {
             glActiveTexture(GL_TEXTURE2);
             const auto txbinder_v = this->bind_texture(2);
@@ -58,9 +37,9 @@ class PlanarGraphic : public MultiTex<3> {
         return *this;
     }
 
-    PlanarGraphic(const int width, const int height, const int stride, const PlanarType planar_type, const std::byte* const y, const std::byte* const u, const std::byte* const v)
+    PlanarGraphic(const int width, const int height, const int stride, const int ppc_x, const int ppc_y, const std::byte* const y, const std::byte* const u, const std::byte* const v)
         : MultiTex(*planar_globject) {
-        update_texture(width, height, stride, planar_type, y, u, v);
+        update_texture(width, height, stride, ppc_x, ppc_y, y, u, v);
     }
 
     PlanarGraphic(PlanarGraphic&& o)
