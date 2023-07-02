@@ -19,23 +19,37 @@ auto init_params_buffer(ipu3_uapi_params& params, const algo::PipeConfig& pipe_c
     params.acc_param.bnr.opt_center_sqr.x_sqr_reset = x_reset * x_reset;
     params.acc_param.bnr.opt_center_sqr.y_sqr_reset = y_reset * y_reset;
 
-    params.acc_param.bnr.wb_gains.r  = 0xFFFF;
-    params.acc_param.bnr.wb_gains.gr = 0;
-    params.acc_param.bnr.wb_gains.gb = 0;
-    params.acc_param.bnr.wb_gains.b  = 0;
+    params.acc_param.bnr.wb_gains.r  = 256;
+    params.acc_param.bnr.wb_gains.gr = 256;
+    params.acc_param.bnr.wb_gains.gb = 256;
+    params.acc_param.bnr.wb_gains.b  = 256;
     params.acc_param.ccm             = uapi::css_ccm_defaults;
 
     params.use.acc_awb = 1;
     params.use.acc_bnr = 1;
     params.use.acc_ccm = 1;
+
+    params.obgrid_param.r   = 64;
+    params.obgrid_param.b   = 64;
+    params.obgrid_param.gr  = 64;
+    params.obgrid_param.gb  = 64;
+    params.use.obgrid       = 1;
+    params.use.obgrid_param = 1;
 }
 
 auto create_control_rows() -> std::vector<VCWindow::Row> {
     auto ret = std::vector<VCWindow::Row>();
-    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.r", ControlKind::WBGainR, 0, 0xFFFF, 0});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.b", ControlKind::WBGainB, 0, 0xFFFF, 0});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.gr", ControlKind::WBGainGR, 0, 0xFFFF, 0});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.gb", ControlKind::WBGainGB, 0, 0xFFFF, 0});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.r", ControlKind::WBGainR, 0, 0xFFFF, 256});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.b", ControlKind::WBGainB, 0, 0xFFFF, 256});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.gr", ControlKind::WBGainGR, 0, 0xFFFF, 256});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.gb", ControlKind::WBGainGB, 0, 0xFFFF, 256});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.r", ControlKind::WBGainR, 0, 0xFFFF, 64});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.b", ControlKind::WBGainB, 0, 0xFFFF, 64});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.gr", ControlKind::WBGainGR, 0, 0xFFFF, 64});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.gb", ControlKind::WBGainGB, 0, 0xFFFF, 64});
+
+    ret.emplace_back(vcw::Tag<vcw::Label<vcw::LabelType::Quit>>(), vcw::Label<vcw::LabelType::Quit>{0, "Quit"});
+
     return ret;
 }
 
@@ -55,6 +69,18 @@ auto apply_controls(ipu3_uapi_params** const params_array, const size_t params_a
             break;
         case ControlKind::WBGainGB:
             params.acc_param.bnr.wb_gains.gb = value;
+            break;
+        case ControlKind::BLCR:
+            params.obgrid_param.r = value;
+            break;
+        case ControlKind::BLCB:
+            params.obgrid_param.b = value;
+            break;
+        case ControlKind::BLCGR:
+            params.obgrid_param.gr = value;
+            break;
+        case ControlKind::BLCGB:
+            params.obgrid_param.gb = value;
             break;
         }
     }

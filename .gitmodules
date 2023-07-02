@@ -1,3 +1,6 @@
 [submodule "src/util"]
 	path = src/util
 	url = https://github.com/mojyack/cutil
+[submodule "src/v4l2-wlctl"]
+	path = src/v4l2-wlctl
+	url = https://github.com/mojyack/v4l2-wlctl.git

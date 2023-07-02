@@ -1,5 +1,5 @@
 #pragma once
-#include "../v4l2-wlctrl/src/window.hpp"
+#include "../v4l2-wlctl/src/window.hpp"
 #include "algorithm.hpp"
 #include "intel-ipu3.h"
 
@@ -8,6 +8,10 @@ enum class ControlKind {
     WBGainB,
     WBGainGR,
     WBGainGB,
+    BLCR,
+    BLCB,
+    BLCGR,
+    BLCGB,
 };
 
 struct Control {
