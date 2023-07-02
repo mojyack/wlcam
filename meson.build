@@ -8,5 +8,8 @@ graphics_src = files(
 
 gawl = dependency('gawl', version : ['>=2.6.2', '<2.7'])
 
-subdir('src/ipu3')
 subdir('src/simple')
+
+if get_option('ipu3')
+  subdir('src/ipu3')
+endif
