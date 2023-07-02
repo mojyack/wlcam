@@ -109,5 +109,4 @@ auto encode_yuvp_to_jpeg(const int width, const int height, const int stride, co
                                        &buf, &size, 100, 0) == 0);
     return {TJBuffer(buf), size};
 }
-
 } // namespace jpg

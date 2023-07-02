@@ -305,8 +305,6 @@ auto query_controls(const int fd) -> std::vector<v4l2_queryctrl> {
         if(query.flags & V4L2_CTRL_FLAG_DISABLED)
             continue;
 
-        printf("Control %s\n", query.name);
-
         query.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
     }
 

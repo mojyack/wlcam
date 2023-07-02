@@ -18,10 +18,13 @@
 #)
 
 ipu3_src = graphics_src + files(
-  'cio2.cpp',
-  'main.cpp',
-  'imgu.cpp',
+  'algorithm.cpp',
   'args.cpp',
+  'cio2.cpp',
+  'imgu.cpp',
+  'main.cpp',
+  'uapi.cpp',
+  'params.cpp',
   '../file.cpp',
   '../jpeg.cpp',
   '../media-device.cpp',
@@ -32,7 +35,7 @@ ipu3_src = graphics_src + files(
 )
 
 executable('wlcam-ipu3', ipu3_src,
-            dependencies : [gawl, dependency('libudev'), dependency('libturbojpeg')],
+            dependencies : [gawl, dependency('gawl-fc'), dependency('libudev'), dependency('libturbojpeg')],
             install : true)
 
 ipu3_enumerator_src = files(
@@ -46,4 +49,7 @@ ipu3_enumerator_src = files(
 
 executable('wlcam-ipu3-enumerator', ipu3_enumerator_src,
             dependencies : [dependency('libudev')],
+            install : true)
+
+executable('pipeline', files('pipeline.cpp'),
             install : true)
