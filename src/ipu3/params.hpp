@@ -12,6 +12,7 @@ enum class ControlKind {
     BLCB,
     BLCGR,
     BLCGB,
+    GammaCollection,
 };
 
 struct Control {

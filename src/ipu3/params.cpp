@@ -1,6 +1,17 @@
 #include "params.hpp"
 #include "uapi.hpp"
 
+namespace {
+auto apply_gamma_lut(ipu3_uapi_params& params, const double gamma) -> void {
+    for(auto i = 0u; i < IPU3_UAPI_GAMMA_CORR_LUT_ENTRIES; i += 1) {
+        auto j = 1. * i / (IPU3_UAPI_GAMMA_CORR_LUT_ENTRIES - 1);
+        auto g = std::pow(j, 1.0 / gamma);
+
+        params.acc_param.gamma.gc_lut.lut[i] = g * 8191;
+    }
+}
+} // namespace
+
 auto init_params_buffer(ipu3_uapi_params& params, const algo::PipeConfig& pipe_config, const ipu3_uapi_grid_config& bds_grid) -> void {
     params.acc_param.awb.config.rgbs_thr_r  = 8191.0;
     params.acc_param.awb.config.rgbs_thr_gr = 8191.0;
@@ -35,6 +46,10 @@ auto init_params_buffer(ipu3_uapi_params& params, const algo::PipeConfig& pipe_c
     params.obgrid_param.gb  = 64;
     params.use.obgrid       = 1;
     params.use.obgrid_param = 1;
+
+    apply_gamma_lut(params, 1 + 16 / 128.0);
+    params.use.acc_gamma                  = 1;
+    params.acc_param.gamma.gc_ctrl.enable = 1;
 }
 
 auto create_control_rows() -> std::vector<VCWindow::Row> {
@@ -47,6 +62,7 @@ auto create_control_rows() -> std::vector<VCWindow::Row> {
     ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.b", ControlKind::WBGainB, 0, 0xFFFF, 64});
     ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.gr", ControlKind::WBGainGR, 0, 0xFFFF, 64});
     ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.gb", ControlKind::WBGainGB, 0, 0xFFFF, 64});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"gamma", ControlKind::GammaCollection, 0, 512, 16});
 
     ret.emplace_back(vcw::Tag<vcw::Label<vcw::LabelType::Quit>>(), vcw::Label<vcw::LabelType::Quit>{0, "Quit"});
 
@@ -81,6 +97,9 @@ auto apply_controls(ipu3_uapi_params** const params_array, const size_t params_a
             break;
         case ControlKind::BLCGB:
             params.obgrid_param.gb = value;
+            break;
+        case ControlKind::GammaCollection:
+            apply_gamma_lut(params, 1 + value / 128.0);
             break;
         }
     }
