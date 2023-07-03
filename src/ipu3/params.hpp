@@ -13,6 +13,7 @@ enum class ControlKind {
     BLCGR,
     BLCGB,
     GammaCollection,
+    LensShading,
 };
 
 struct Control {
