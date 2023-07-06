@@ -279,10 +279,10 @@ auto create_control_rows() -> std::vector<VCWindow::Row> {
     ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.b", ControlKind::WBGainB, 0, 0x1FFF, 16});
     ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.gr", ControlKind::WBGainGR, 0, 0x1FFF, 16});
     ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.gb", ControlKind::WBGainGB, 0, 0x1FFF, 16});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.r", ControlKind::WBGainR, 0, 0x1FFF, 64});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.b", ControlKind::WBGainB, 0, 0x1FFF, 64});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.gr", ControlKind::WBGainGR, 0, 0x1FFF, 64});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.gb", ControlKind::WBGainGB, 0, 0x1FFF, 64});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.r", ControlKind::BLCR, -2048, 2047, 64});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.b", ControlKind::BLCB, -2048, 2047, 64});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.gr", ControlKind::BLCGR, -2048, 2047, 64});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.gb", ControlKind::BLCGB, -2048, 2047, 64});
     ret.emplace_back(vcw::Tag<Control>(), Control{"gamma", ControlKind::GammaCollection, 0, 512, 16});
     ret.emplace_back(vcw::Tag<Control>(), Control{"lens shading", ControlKind::LensShading, -128, 128, 0});
 
