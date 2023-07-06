@@ -1,6 +1,6 @@
 #include <algorithm>
-#include <vector>
 #include <iostream>
+#include <vector>
 
 #include "algorithm.hpp"
 
@@ -20,16 +20,16 @@ constexpr auto BDS_SF_MAX  = 2.5;
 constexpr auto BDS_SF_MIN  = 1;
 constexpr auto BDS_SF_STEP = 1.0 / 32;
 
-//constexpr auto YUV_SF_MAX  = 16;
-//constexpr auto YUV_SF_MIN  = 1;
-//constexpr auto YUV_SF_STEP = 1.0 / 4;
+// constexpr auto YUV_SF_MAX  = 16;
+// constexpr auto YUV_SF_MIN  = 1;
+// constexpr auto YUV_SF_STEP = 1.0 / 4;
 
 constexpr auto YUV_MAX_SCALE = 12;
 
 constexpr auto MIN_GRID_WIDTH = 16;
 // constexpr auto MAX_GRID_WIDTH = 80;
-constexpr auto MIN_GRID_HEIGHT = 16;
-constexpr auto MAX_GRID_HEIGHT = 60;
+constexpr auto MIN_GRID_HEIGHT    = 16;
+constexpr auto MAX_GRID_HEIGHT    = 60;
 constexpr auto MIN_CELL_SISE_LOG2 = 3;
 constexpr auto MAX_CELL_SISE_LOG2 = 6;
 
@@ -126,7 +126,7 @@ auto calculate_bds(std::vector<PipeConfig>& pipeconfigs, const Size iif, const S
     proc(-1);
 }
 
-auto calculate_gdc([[maybe_unused]]const Size input, const Size output, const Size viewfinder) -> Size {
+auto calculate_gdc([[maybe_unused]] const Size input, const Size output, const Size viewfinder) -> Size {
     auto gdc_w = output.width;
     auto gdc_h = std::max(output.height, output.width * viewfinder.height / viewfinder.width);
     gdc_h      = std::min(gdc_h, viewfinder.height * YUV_MAX_SCALE);
@@ -205,7 +205,7 @@ auto calculate_pipeline_config(const Size input, const Size output, const Size v
 }
 
 auto calculate_bds_grid(const Size bds) -> std::pair<Size, Size> {
-    auto best = Size();
+    auto best      = Size();
     auto best_log2 = Size();
 
     auto min_error = std::numeric_limits<uint32_t>::max();
@@ -216,26 +216,38 @@ auto calculate_bds_grid(const Size bds) -> std::pair<Size, Size> {
             continue;
         }
 
-        min_error = error;
-        best.width = width;
+        min_error       = error;
+        best.width      = width;
         best_log2.width = shift;
-
     }
 
     min_error = std::numeric_limits<uint32_t>::max();
     for(auto shift = MIN_CELL_SISE_LOG2; shift <= MAX_CELL_SISE_LOG2; shift += 1) {
         const auto height = std::clamp(bds.height >> shift, MIN_GRID_HEIGHT, MAX_GRID_HEIGHT) << shift;
-        const auto error = uint32_t(std::abs(height - bds.height));
+        const auto error  = uint32_t(std::abs(height - bds.height));
         if(error >= min_error) {
             continue;
         }
 
-        min_error = error;
-        best.height = height;
+        min_error        = error;
+        best.height      = height;
         best_log2.height = shift;
-
     }
 
     return {best, best_log2};
 }
+
+auto align_size(const Size size) -> Size {
+    return Size{ceil_aligned(64, size.width), ceil_aligned(64, size.height)};
 }
+
+auto calculate_best_viewfinder(const Size output, const Size window) -> Size {
+    if(output.width > output.height) {
+        auto viewfinder = Size{window.width, output.height * window.width / output.width};
+        return align_size(viewfinder);
+    } else {
+        auto viewfinder = Size{output.width * window.height / output.height, window.height};
+        return align_size(viewfinder);
+    }
+}
+} // namespace algo

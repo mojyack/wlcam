@@ -41,17 +41,19 @@ auto main(const int argc, const char* const argv[]) -> int {
     v4l2::set_format_subdev(cio2_0.cio2, 0, args.sensor_mbus_code, args.sensor_width, args.sensor_height);
     const auto cio_output_fmt = v4l2::set_format_mp(cio2_0.output, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, imgu_input_format, 1, args.sensor_width, args.sensor_height, nullptr);
 
-    const auto pipeline_config = algo::calculate_pipeline_config({args.sensor_width, args.sensor_height}, {args.width, args.height}, {args.width, args.height});
+    const auto output          = algo::align_size({args.width, args.height});
+    const auto viewfinder      = algo::align_size({1920, 1280}); // TODO
+    const auto pipeline_config = algo::calculate_pipeline_config({args.sensor_width, args.sensor_height}, output, viewfinder);
     const auto bds_grid        = uapi::create_bds_grid(pipeline_config.bds);
 
     v4l2::set_format_mp(imgu_0.input, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, imgu_input_format, 1, args.sensor_width, args.sensor_height, cio_output_fmt.fmt.pix_mp.plane_fmt);
     v4l2::set_format_subdev(imgu_0.imgu, imgu_0.imgu_input_pad_index, MEDIA_BUS_FMT_FIXED, pipeline_config.gdc.width, pipeline_config.gdc.height); // GDC
-    v4l2::set_format_subdev(imgu_0.imgu, imgu_0.imgu_parameters_pad_index, MEDIA_BUS_FMT_FIXED, args.width, args.height);
-    v4l2::set_format_subdev(imgu_0.imgu, imgu_0.imgu_stat_pad_index, MEDIA_BUS_FMT_FIXED, args.width, args.height);
-    v4l2::set_format_subdev(imgu_0.imgu, imgu_0.imgu_output_pad_index, MEDIA_BUS_FMT_FIXED, args.width, args.height);
-    const auto imgu_output_fmt = v4l2::set_format_mp(imgu_0.output, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_PIX_FMT_NV12, 2, args.width, args.height, nullptr);
-    v4l2::set_format_subdev(imgu_0.imgu, imgu_0.imgu_viewfinder_pad_index, MEDIA_BUS_FMT_FIXED, args.width, args.height);
-    v4l2::set_format_mp(imgu_0.viewfinder, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_PIX_FMT_NV12, 2, args.width, args.height, nullptr);
+    v4l2::set_format_subdev(imgu_0.imgu, imgu_0.imgu_parameters_pad_index, MEDIA_BUS_FMT_FIXED, output.width, output.height);
+    v4l2::set_format_subdev(imgu_0.imgu, imgu_0.imgu_stat_pad_index, MEDIA_BUS_FMT_FIXED, output.width, output.height);
+    v4l2::set_format_subdev(imgu_0.imgu, imgu_0.imgu_output_pad_index, MEDIA_BUS_FMT_FIXED, output.width, output.height);
+    const auto imgu_output_fmt = v4l2::set_format_mp(imgu_0.output, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_PIX_FMT_NV12, 2, output.width, output.height, nullptr);
+    v4l2::set_format_subdev(imgu_0.imgu, imgu_0.imgu_viewfinder_pad_index, MEDIA_BUS_FMT_FIXED, output.width, output.height);
+    v4l2::set_format_mp(imgu_0.viewfinder, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_PIX_FMT_NV12, 2, output.width, output.height, nullptr);
 
     v4l2::set_selection_subdev(imgu_0.imgu, imgu_0.imgu_input_pad_index, V4L2_SEL_TGT_CROP, 0, 0, pipeline_config.iif.width, pipeline_config.iif.height);    // IF
     v4l2::set_selection_subdev(imgu_0.imgu, imgu_0.imgu_input_pad_index, V4L2_SEL_TGT_COMPOSE, 0, 0, pipeline_config.bds.width, pipeline_config.bds.height); // BDS

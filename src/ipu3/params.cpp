@@ -53,8 +53,8 @@ auto init_params_buffer(ipu3_uapi_params& params, const algo::PipeConfig& pipe_c
 
     // SHD(Lens shading correction)
     {
-        constexpr auto block_width_log2  = 5; // 32px
-        constexpr auto block_height_log2 = 5; // 32px
+        constexpr auto block_width_log2  = 6; // 32px
+        constexpr auto block_height_log2 = 6; // 32px
         constexpr auto block_width       = 1 << block_width_log2;
         constexpr auto block_height      = 1 << block_height_log2;
 
