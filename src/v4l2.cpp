@@ -246,19 +246,19 @@ auto queue_buffer(const int fd, const v4l2_buf_type buffer_type, const uint32_t 
     DYN_ASSERT(xioctl(fd, VIDIOC_QBUF, &buf) != -1);
 }
 
-auto queue_buffer_mp(const int fd, const v4l2_buf_type buffer_type, const v4l2_memory memory_type, const uint32_t index, const std::vector<const DMABuffer*> dma_buffers) -> void {
+auto queue_buffer_mp(const int fd, const v4l2_buf_type buffer_type, const v4l2_memory memory_type, const uint32_t index, const DMABuffer* const dma_buffers, const size_t dma_buffers_size) -> void {
     auto buf    = v4l2_buffer();
     auto planes = std::array<v4l2_plane, VIDEO_MAX_PLANES>();
 
     buf.type     = buffer_type;
     buf.memory   = memory_type;
     buf.index    = index;
-    buf.length   = dma_buffers.size();
+    buf.length   = dma_buffers_size;
     buf.field    = V4L2_FIELD_NONE;
     buf.m.planes = planes.data();
-    for(auto i = 0u; i < dma_buffers.size(); i += 1) {
-        planes[i].m.fd   = dma_buffers[i]->fd;
-        planes[i].length = dma_buffers[i]->length;
+    for(auto i = 0u; i < dma_buffers_size; i += 1) {
+        planes[i].m.fd   = dma_buffers[i].fd;
+        planes[i].length = dma_buffers[i].length;
     }
 
     DYN_ASSERT(xioctl(fd, VIDIOC_QBUF, &buf) != -1);

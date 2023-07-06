@@ -55,8 +55,6 @@ auto ceil_aligned(const int step, const int value) -> int {
     return ((value + step - 1) / step) * step;
 }
 
-// auto pipeconfigs = std::vector<PipeConfig>();
-
 auto calculate_bds_height(std::vector<PipeConfig>& pipeconfigs, const Size iif, const Size gdc, const int bds_width, const double bds_sf) -> void {
     const auto min_if_h  = iif.height - IF_CROP_MAX_H;
     const auto min_bds_h = gdc.height + FILTER_H * 2;

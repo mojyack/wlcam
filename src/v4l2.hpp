@@ -65,7 +65,7 @@ auto query_and_export_buffers_mp(int fd, v4l2_buf_type type, const v4l2_requestb
 
 auto queue_buffer(int fd, v4l2_buf_type buffer_type, uint32_t index) -> void;
 
-auto queue_buffer_mp(int fd, v4l2_buf_type buffer_type, v4l2_memory memory_type, uint32_t index, std::vector<const DMABuffer*> dma_buffers) -> void;
+auto queue_buffer_mp(int fd, v4l2_buf_type buffer_type, v4l2_memory memory_type, uint32_t index, const DMABuffer* dma_buffers, size_t dma_buffers_size) -> void;
 
 auto dequeue_buffer(int fd, v4l2_buf_type buffer_type) -> uint32_t;
 
