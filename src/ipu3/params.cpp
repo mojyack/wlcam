@@ -12,7 +12,7 @@ auto apply_gamma_lut(ipu3_uapi_params& params, const double gamma) -> void {
         auto j = 1. * i / (IPU3_UAPI_GAMMA_CORR_LUT_ENTRIES - 1);
         auto g = std::pow(j, 1.0 / gamma);
 
-        params.acc_param.gamma.gc_lut.lut[i] = g * 8191;
+        params.acc_param.gamma.gc_lut.lut[i] = g * 0x1FFF;
     }
 }
 
@@ -40,10 +40,10 @@ auto apply_shd_lut(ipu3_uapi_params& params, const double gain) -> void {
             const auto r = s * grid.grid_height_per_slice + r_;
             for(auto c = 0u; c < grid.width; c += 1) {
                 const auto distance                          = (std::pow(center_x - c, 2) + std::pow(center_y - r, 2)) / max_distance;
-                lut.sets[s].r_and_gr[r_ * grid.width + c].r  = 8192 * distance * 0.19 * gain;
-                lut.sets[s].r_and_gr[r_ * grid.width + c].gr = 8192 * distance * 0.16 * gain;
-                lut.sets[s].gb_and_b[r_ * grid.width + c].gb = 8192 * distance * 0.16 * gain;
-                lut.sets[s].gb_and_b[r_ * grid.width + c].b  = 8192 * distance * 0.17 * gain;
+                lut.sets[s].r_and_gr[r_ * grid.width + c].r  = 0x1FFF * distance * 0.156 * gain;
+                lut.sets[s].r_and_gr[r_ * grid.width + c].gr = 0x1FFF * distance * 0.138 * gain;
+                lut.sets[s].gb_and_b[r_ * grid.width + c].gb = 0x1FFF * distance * 0.138 * gain;
+                lut.sets[s].gb_and_b[r_ * grid.width + c].b  = 0x1FFF * distance * 0.147 * gain;
             }
         }
     }
@@ -275,14 +275,14 @@ auto init_params_buffer(ipu3_uapi_params& params, const algo::PipeConfig& pipe_c
 
 auto create_control_rows() -> std::vector<VCWindow::Row> {
     auto ret = std::vector<VCWindow::Row>();
-    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.r", ControlKind::WBGainR, 0, 0xFFFF, 16});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.b", ControlKind::WBGainB, 0, 0xFFFF, 16});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.gr", ControlKind::WBGainGR, 0, 0xFFFF, 16});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.gb", ControlKind::WBGainGB, 0, 0xFFFF, 16});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.r", ControlKind::WBGainR, 0, 0xFFFF, 64});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.b", ControlKind::WBGainB, 0, 0xFFFF, 64});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.gr", ControlKind::WBGainGR, 0, 0xFFFF, 64});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.gb", ControlKind::WBGainGB, 0, 0xFFFF, 64});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.r", ControlKind::WBGainR, 0, 0x1FFF, 16});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.b", ControlKind::WBGainB, 0, 0x1FFF, 16});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.gr", ControlKind::WBGainGR, 0, 0x1FFF, 16});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.gb", ControlKind::WBGainGB, 0, 0x1FFF, 16});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.r", ControlKind::WBGainR, 0, 0x1FFF, 64});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.b", ControlKind::WBGainB, 0, 0x1FFF, 64});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.gr", ControlKind::WBGainGR, 0, 0x1FFF, 64});
+    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.gb", ControlKind::WBGainGB, 0, 0x1FFF, 64});
     ret.emplace_back(vcw::Tag<Control>(), Control{"gamma", ControlKind::GammaCollection, 0, 512, 16});
     ret.emplace_back(vcw::Tag<Control>(), Control{"lens shading", ControlKind::LensShading, -128, 128, 0});
 
