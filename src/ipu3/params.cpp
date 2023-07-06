@@ -18,7 +18,8 @@ auto apply_shd_lut(ipu3_uapi_params& params, const double gain) -> void {
     const auto center_x     = (grid.width - 1) / 2.0;
     const auto center_y     = (grid.height - 1) / 2.0;
     const auto max_distance = std::pow(center_x, 2) + std::pow(center_y, 2);
-    for(auto s = 0u; s < grid.height / grid.grid_height_per_slice; s += 1) {
+    const auto sets         = (grid.height + grid.grid_height_per_slice - 1) / grid.grid_height_per_slice;
+    for(auto s = 0; s < sets; s += 1) {
         for(auto r_ = 0u; r_ < grid.grid_height_per_slice; r_ += 1) {
             const auto r = s * grid.grid_height_per_slice + r_;
             for(auto c = 0u; c < grid.width; c += 1) {
