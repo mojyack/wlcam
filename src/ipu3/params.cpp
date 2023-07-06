@@ -40,10 +40,10 @@ auto apply_shd_lut(ipu3_uapi_params& params, const double gain) -> void {
             const auto r = s * grid.grid_height_per_slice + r_;
             for(auto c = 0u; c < grid.width; c += 1) {
                 const auto distance                          = (std::pow(center_x - c, 2) + std::pow(center_y - r, 2)) / max_distance;
-                lut.sets[s].r_and_gr[r_ * grid.width + c].r  = 0x1FFF * distance * 0.156 * gain;
-                lut.sets[s].r_and_gr[r_ * grid.width + c].gr = 0x1FFF * distance * 0.138 * gain;
-                lut.sets[s].gb_and_b[r_ * grid.width + c].gb = 0x1FFF * distance * 0.138 * gain;
-                lut.sets[s].gb_and_b[r_ * grid.width + c].b  = 0x1FFF * distance * 0.147 * gain;
+                lut.sets[s].r_and_gr[r_ * grid.width + c].r  = 0x1FFF * distance * 0.115 * gain;
+                lut.sets[s].r_and_gr[r_ * grid.width + c].gr = 0x1FFF * distance * 0.108 * gain;
+                lut.sets[s].gb_and_b[r_ * grid.width + c].gb = 0x1FFF * distance * 0.108 * gain;
+                lut.sets[s].gb_and_b[r_ * grid.width + c].b  = 0x1FFF * distance * 0.096 * gain;
             }
         }
     }
