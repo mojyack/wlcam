@@ -68,7 +68,6 @@ auto main(const int argc, const char* const argv[]) -> int {
     const auto imgu_output_buffers = v4l2::query_and_export_buffers_mp(imgu_0.output, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, imgu_output_req);
     v4l2::request_buffers(imgu_0.output, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, 0);
     v4l2::request_buffers(imgu_0.output, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_DMABUF, num_buffers);
-    EAGAIN;
 
     const auto imgu_vf_req     = v4l2::request_buffers(imgu_0.viewfinder, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, num_buffers);
     const auto imgu_vf_buffers = v4l2::query_and_export_buffers_mp(imgu_0.viewfinder, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, imgu_vf_req);

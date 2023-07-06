@@ -2,6 +2,11 @@
 #include "uapi.hpp"
 
 namespace {
+template <class T>
+auto cdiv(const T a, const T b) -> T {
+    return (a + b - 1) / b;
+}
+
 auto apply_gamma_lut(ipu3_uapi_params& params, const double gamma) -> void {
     for(auto i = 0u; i < IPU3_UAPI_GAMMA_CORR_LUT_ENTRIES; i += 1) {
         auto j = 1. * i / (IPU3_UAPI_GAMMA_CORR_LUT_ENTRIES - 1);
@@ -11,6 +16,17 @@ auto apply_gamma_lut(ipu3_uapi_params& params, const double gamma) -> void {
     }
 }
 
+auto is_valid_shd_grid_size(const int num_grids_x, const int num_grids_y) -> bool {
+    if(num_grids_x > IPU3_UAPI_SHD_MAX_CELLS_PER_SET) {
+        return false;
+    }
+    const auto slices_per_set = IPU3_UAPI_SHD_MAX_CELLS_PER_SET / num_grids_x;
+    if(cdiv(num_grids_y, slices_per_set) > IPU3_UAPI_SHD_MAX_CFG_SETS) {
+        return false;
+    }
+    return true;
+}
+
 auto apply_shd_lut(ipu3_uapi_params& params, const double gain) -> void {
     auto&      shd          = params.acc_param.shd.shd;
     auto&      grid         = shd.grid;
@@ -18,7 +34,7 @@ auto apply_shd_lut(ipu3_uapi_params& params, const double gain) -> void {
     const auto center_x     = (grid.width - 1) / 2.0;
     const auto center_y     = (grid.height - 1) / 2.0;
     const auto max_distance = std::pow(center_x, 2) + std::pow(center_y, 2);
-    const auto sets         = (grid.height + grid.grid_height_per_slice - 1) / grid.grid_height_per_slice;
+    const auto sets         = cdiv(grid.height, grid.grid_height_per_slice);
     for(auto s = 0; s < sets; s += 1) {
         for(auto r_ = 0u; r_ < grid.grid_height_per_slice; r_ += 1) {
             const auto r = s * grid.grid_height_per_slice + r_;
@@ -54,20 +70,30 @@ auto init_params_buffer(ipu3_uapi_params& params, const algo::PipeConfig& pipe_c
 
     // SHD(Lens shading correction)
     {
-        constexpr auto block_width_log2  = 6; // 32px
-        constexpr auto block_height_log2 = 6; // 32px
-        constexpr auto block_width       = 1 << block_width_log2;
-        constexpr auto block_height      = 1 << block_height_log2;
+        auto block_width_log2  = 4;
+        auto block_height_log2 = 4;
+        auto block_width       = 1 << block_width_log2;
+        auto block_height      = 1 << block_height_log2;
+        while(true) {
+            if(is_valid_shd_grid_size(cdiv(pipe_config.bds.width, block_width), cdiv(pipe_config.bds.height, block_height))) {
+                break;
+            }
+            block_width_log2 += 1;
+            block_width <<= 1;
+            if(is_valid_shd_grid_size(cdiv(pipe_config.bds.width, block_width), cdiv(pipe_config.bds.height, block_height_log2))) {
+                break;
+            }
+            block_height_log2 += 1;
+            block_height <<= 1;
+        }
 
-        const auto num_grids_x = (pipe_config.bds.width + block_width - 1) / block_width;
-        const auto num_grids_y = (pipe_config.bds.height + block_height - 1) / block_height;
+        auto& shd         = params.acc_param.shd.shd;
+        auto& grid        = shd.grid;
+        auto& general     = shd.general;
+        auto& black_level = shd.black_level;
 
-        auto& shd                     = params.acc_param.shd.shd;
-        auto& grid                    = shd.grid;
-        auto& general                 = shd.general;
-        auto& black_level             = shd.black_level;
-        grid.width                    = num_grids_x;
-        grid.height                   = num_grids_y;
+        grid.width                    = cdiv(pipe_config.bds.width, block_width);
+        grid.height                   = cdiv(pipe_config.bds.height, block_height);
         grid.block_width_log2         = block_width_log2;
         grid.block_height_log2        = block_height_log2;
         grid.grid_height_per_slice    = IPU3_UAPI_SHD_MAX_CELLS_PER_SET / grid.width;
@@ -80,14 +106,6 @@ auto init_params_buffer(ipu3_uapi_params& params, const algo::PipeConfig& pipe_c
         black_level.bl_gr             = 0;
         black_level.bl_gr             = 0;
         black_level.bl_b              = 0;
-
-        if(num_grids_x > IPU3_UAPI_SHD_MAX_CELLS_PER_SET || num_grids_y / grid.grid_height_per_slice > IPU3_UAPI_SHD_MAX_CFG_SETS) {
-            printf("input too large to enable shd\n");
-            printf("num_grids_x: %u >? %u\n", num_grids_x, IPU3_UAPI_SHD_MAX_CELLS_PER_SET);
-            printf("num_grids_y / grid.grid_height_per_slice: %u >? %u\n", num_grids_y / grid.grid_height_per_slice, IPU3_UAPI_SHD_MAX_CFG_SETS);
-            exit(1);
-        }
-
         apply_shd_lut(params, 1);
         params.use.acc_shd = 1;
     }
@@ -275,7 +293,6 @@ auto create_control_rows() -> std::vector<VCWindow::Row> {
 
 auto apply_controls(ipu3_uapi_params** const params_array, const size_t params_array_size, Control& control, const int value) -> void {
     control.current = value;
-    auto start      = clock();
     for(auto i = 0u; i < params_array_size; i += 1) {
         auto& params = *params_array[i];
         switch(control.kind) {
@@ -316,9 +333,5 @@ auto apply_controls(ipu3_uapi_params** const params_array, const size_t params_a
         case ControlKind::User5:
             break;
         }
-    }
-    if(control.kind == ControlKind::LensShading) {
-        // 0.4ms
-        printf("%f\n", 1. * (clock() - start) / (__clock_t)1000);
     }
 }
