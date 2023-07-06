@@ -119,7 +119,69 @@ auto init_params_buffer(ipu3_uapi_params& params, const algo::PipeConfig& pipe_c
 
     // ANR(Advanced Noise Reduction)
     {
-        // params.acc_param.anr;
+        // from ipu3-tables.c
+        static const auto defaults = ipu3_uapi_anr_config{
+            .transform = {
+                .enable                = 1,
+                .adaptive_treshhold_en = 1,
+                .alpha                 = {{13, 13, 13, 13, 0, 0, 0, 0},
+                                          {11, 11, 11, 11, 0, 0, 0, 0},
+                                          {14, 14, 14, 14, 0, 0, 0, 0}},
+                .beta                  = {{24, 24, 24, 24},
+                                          {21, 20, 20, 21},
+                                          {25, 25, 25, 25}},
+                .color                 = {{{166, 173, 149, 166, 161, 146, 145, 173, 145, 150, 141, 149, 145, 141, 142},
+                                           {166, 173, 149, 165, 161, 145, 145, 173, 145, 150, 141, 149, 145, 141, 142},
+                                           {166, 174, 149, 166, 162, 146, 146, 173, 145, 150, 141, 149, 145, 141, 142},
+                                           {166, 173, 149, 165, 161, 145, 145, 173, 146, 150, 141, 149, 145, 141, 142}},
+                                          {{141, 131, 140, 141, 144, 143, 144, 131, 143, 137, 140, 140, 144, 140, 141},
+                                           {141, 131, 140, 141, 143, 143, 144, 131, 143, 137, 140, 140, 144, 140, 141},
+                                           {141, 131, 141, 141, 144, 144, 144, 131, 143, 137, 140, 140, 144, 140, 141},
+                                           {140, 131, 140, 141, 143, 143, 144, 131, 143, 137, 140, 140, 144, 140, 141}},
+                                          {{184, 173, 188, 184, 182, 182, 181, 173, 182, 179, 182, 188, 181, 182, 180},
+                                           {184, 173, 188, 184, 183, 182, 181, 173, 182, 178, 182, 188, 181, 182, 180},
+                                           {184, 173, 188, 184, 182, 182, 181, 173, 182, 178, 182, 188, 181, 182, 181},
+                                           {184, 172, 188, 184, 182, 182, 181, 173, 182, 178, 182, 188, 182, 182, 180}}},
+                .sqrt_lut              = {724, 768, 810, 849, 887, 923, 958, 991, 1024,
+                                          1056, 1086, 1116, 1145, 1173, 1201, 1228, 1254,
+                                          1280, 1305, 1330, 1355, 1379, 1402, 1425, 1448},
+                .xreset                = -1632,
+                .yreset                = -1224,
+                .x_sqr_reset           = 2663424,
+                .r_normfactor          = 14,
+                .y_sqr_reset           = 1498176,
+                .gain_scale            = 115},
+            .stitch = {
+                .anr_stitch_en = 1,
+                .pyramid       = {
+                    {1, 3, 5, {}},
+                    {7, 7, 5, {}},
+                    {3, 1, 3, {}},
+                    {9, 15, 21, {}},
+                    {21, 15, 9, {}},
+                    {3, 5, 15, {}},
+                    {25, 35, 35, {}},
+                    {25, 15, 5, {}},
+                    {7, 21, 35, {}},
+                    {49, 49, 35, {}},
+                    {21, 7, 7, {}},
+                    {21, 35, 49, {}},
+                    {49, 35, 21, {}},
+                    {7, 5, 15, {}},
+                    {25, 35, 35, {}},
+                    {25, 15, 5, {}},
+                    {3, 9, 15, {}},
+                    {21, 21, 15, {}},
+                    {9, 3, 1, {}},
+                    {3, 5, 7, {}},
+                    {7, 5, 3, {}},
+                    {1, {}, {}, {}},
+                },
+            },
+        };
+
+        params.acc_param.anr = defaults;
+        // params.use.acc_anr   = 1;
     }
 
     // DM(Demosaicing converts)
@@ -162,8 +224,27 @@ auto init_params_buffer(ipu3_uapi_params& params, const algo::PipeConfig& pipe_c
 
     // XNR3(eXtreme Noise Reduction V3)
     {
-        // params.xnr3_vmem_params;
-        // params.xnr3_dmem_params;
+
+        struct ipu3_uapi_isp_xnr3_vmem_params_ {
+            int16_t x[16];
+            int16_t reserved0[IPU3_UAPI_ISP_VEC_ELEMS - 16];
+            int16_t a[16];
+            int16_t reserved1[IPU3_UAPI_ISP_VEC_ELEMS - 16];
+            int16_t b[16];
+            int16_t reserved2[IPU3_UAPI_ISP_VEC_ELEMS - 16];
+            int16_t c[16];
+            int16_t reserved3[IPU3_UAPI_ISP_VEC_ELEMS - 16];
+        } __attribute__((packed));
+
+        static const auto defaults = ipu3_uapi_isp_xnr3_vmem_params_{
+            .x = {1024, 1164, 1320, 1492, 1680, 1884, 2108, 2352, 2616, 2900, 3208, 3540, 3896, 4276, 4684, 5120},
+            .a = {-7213, -5580, -4371, -3421, -2722, -2159, -6950, -5585, -4529, -3697, -3010, -2485, -2070, -1727, -1428, 0},
+            .b = {4096, 3603, 3178, 2811, 2497, 2226, 1990, 1783, 1603, 1446, 1307, 1185, 1077, 981, 895, 819},
+            .c = {1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+        };
+
+        memcpy(&params.xnr3_vmem_params, &defaults, sizeof(ipu3_uapi_isp_xnr3_vmem_params));
+        // params.use.xnr3_vmem_params = 1;
     }
 
     // TNR(Temporal Noise Reduction)
@@ -193,6 +274,7 @@ auto create_control_rows() -> std::vector<VCWindow::Row> {
 
 auto apply_controls(ipu3_uapi_params** const params_array, const size_t params_array_size, Control& control, const int value) -> void {
     control.current = value;
+    auto start      = clock();
     for(auto i = 0u; i < params_array_size; i += 1) {
         auto& params = *params_array[i];
         switch(control.kind) {
@@ -226,6 +308,16 @@ auto apply_controls(ipu3_uapi_params** const params_array, const size_t params_a
         case ControlKind::LensShading:
             apply_shd_lut(params, 1 + value / 128.0);
             break;
+        case ControlKind::User1:
+        case ControlKind::User2:
+        case ControlKind::User3:
+        case ControlKind::User4:
+        case ControlKind::User5:
+            break;
         }
+    }
+    if(control.kind == ControlKind::LensShading) {
+        // 0.4ms
+        printf("%f\n", 1. * (clock() - start) / (__clock_t)1000);
     }
 }
