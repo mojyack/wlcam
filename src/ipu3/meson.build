@@ -31,3 +31,16 @@ ipu3_enumerator_src = files(
 executable('wlcam-ipu3-enumerator', ipu3_enumerator_src,
             dependencies : [dependency('libudev')],
             install : true)
+
+ipu3_devinfo_src = files(
+  'devinfo.cpp',
+  'cio2.cpp',
+  'imgu.cpp',
+  '../v4l2.cpp',
+  '../udev.cpp',
+  '../media-device.cpp',
+)
+
+executable('wlcam-ipu3-devinfo', ipu3_devinfo_src,
+            dependencies : [dependency('libudev')],
+            install : true)
