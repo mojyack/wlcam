@@ -16,6 +16,10 @@ struct RecordStop {
     std::string path;
 };
 
+struct Raw {
+    std::string string;
+};
+
 struct Bye {};
 }; // namespace RemoteEvents
 
@@ -24,6 +28,7 @@ using RemoteEvent = Variant<
     RemoteEvents::Configure,
     RemoteEvents::RecordStart,
     RemoteEvents::RecordStop,
+    RemoteEvents::Raw,
     RemoteEvents::Bye>;
 
 class RemoteServer {

@@ -9,6 +9,7 @@ ipu3_src = graphics_src + files(
   '../file.cpp',
   '../jpeg.cpp',
   '../media-device.cpp',
+  '../remote-server.cpp',
   '../udev.cpp',
   '../v4l2.cpp',
   '../window.cpp',
@@ -29,18 +30,5 @@ ipu3_enumerator_src = files(
 )
 
 executable('wlcam-ipu3-enumerator', ipu3_enumerator_src,
-            dependencies : [dependency('libudev')],
-            install : true)
-
-ipu3_devinfo_src = files(
-  'devinfo.cpp',
-  'cio2.cpp',
-  'imgu.cpp',
-  '../v4l2.cpp',
-  '../udev.cpp',
-  '../media-device.cpp',
-)
-
-executable('wlcam-ipu3-devinfo', ipu3_devinfo_src,
             dependencies : [dependency('libudev')],
             install : true)

@@ -9,6 +9,7 @@ const auto help = R"str(usage: wlcam-ipu3 [FLAG|OPTION]...
 flags:
   -h, --help                   print this message
 options:
+  -s, --server PATH            create fifo for companion
   -o, --output PATH            output directory
   --cio2 MEDIA_DEV             (device profile)  
   --imgu MEDIA_DEV             (device profile)
@@ -49,6 +50,9 @@ auto parse_args(const int argc, const char* const argv[]) -> Args {
         if(arg == "-h" || arg == "--help") {
             print(help);
             exit(0);
+        } else if(arg == "-s" || arg == "--server") {
+            increment(i);
+            args.event_fifo = argv[i];
         } else if(arg == "-o" || arg == "--output") {
             increment(i);
             args.savedir = argv[i];

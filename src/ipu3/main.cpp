@@ -6,6 +6,7 @@
 #include "../file.hpp"
 #include "../jpeg.hpp"
 #include "../media-device.hpp"
+#include "../remote-server.hpp"
 #include "../udev.hpp"
 #include "../v4l2.hpp"
 #include "../window.hpp"
@@ -125,7 +126,7 @@ auto main(const int argc, const char* const argv[]) -> int {
     auto context = Context();
     auto app     = gawl::Application();
     auto window  = &app.open_window<Window>({}, context, false).get_window();
-    app.open_window<VCWindow>({.manual_refresh = true}, control_rows, apply_control);
+    app.open_window<VCWindow>({.manual_refresh = true}, control_rows, apply_control, [&app]() { app.quit(); });
 
     init_yuv420sp_graphic_globject();
 
@@ -133,6 +134,7 @@ auto main(const int argc, const char* const argv[]) -> int {
     auto camera_thread        = std::thread([&]() {
         auto       window_context = window->fork_context();
         auto       file_manager   = FileManager(args.savedir);
+        auto       event_fifo     = args.event_fifo != nullptr ? RemoteServer(args.event_fifo) : RemoteServer();
         const auto output_width   = imgu_output_fmt.fmt.pix_mp.width;
         const auto output_height  = imgu_output_fmt.fmt.pix_mp.height;
         const auto output_stride  = imgu_output_fmt.fmt.pix_mp.plane_fmt[0].bytesperline;
@@ -141,6 +143,14 @@ auto main(const int argc, const char* const argv[]) -> int {
         const auto vf_stride      = imgu_vf_fmt.fmt.pix_mp.plane_fmt[0].bytesperline;
         auto       ubuf           = std::vector<std::byte>(output_height / 4 * output_width);
         auto       vbuf           = std::vector<std::byte>(output_height / 4 * output_width);
+
+        if(event_fifo) {
+            event_fifo.send_event(RemoteEvents::Hello{});
+            event_fifo.send_event(RemoteEvents::Raw{build_string("ipu3 sensor ", cio2_0.sensor.dev_node)});
+            if(cio2_0.sensor.lens) {
+                event_fifo.send_event(RemoteEvents::Raw{build_string("ipu3 lens ", cio2_0.sensor.lens->dev_node)});
+            }
+        }
 
         while(!finish_camera_thread) {
             const auto i = v4l2::dequeue_buffer_mp(cio2_0.output, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_DMABUF);
@@ -184,12 +194,15 @@ auto main(const int argc, const char* const argv[]) -> int {
 
             v4l2::queue_buffer_mp(cio2_0.output, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_DMABUF, i, &cio2_output_buffers[i], 1);
         }
+
+        event_fifo.send_event(RemoteEvents::Bye{});
     });
 
     app.run();
 
     finish_camera_thread = true;
     camera_thread.join();
+    std::quick_exit(0);
 
     return 0;
 }

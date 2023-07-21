@@ -3,7 +3,8 @@
 
 namespace ipu3 {
 struct Args {
-    const char* savedir = nullptr;
+    const char* event_fifo = nullptr;
+    const char* savedir    = nullptr;
     const char* cio2_devnode;
     const char* imgu_devnode;
     const char* cio2_entity;

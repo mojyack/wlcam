@@ -39,6 +39,11 @@ auto RemoteServer::send_event(const RemoteEvent event) -> void {
         write_string(fd, path.data(), path.size());
         write_string(fd, "\n");
     } break;
+    case RemoteEvent::index_of<RemoteEvents::Raw>: {
+        const auto& str = event.as<RemoteEvents::Raw>().string;
+        write_string(fd, str.data(), str.size());
+        write_string(fd, "\n");
+    } break;
     case RemoteEvent::index_of<RemoteEvents::Bye>:
         write_string(fd, "bye\n");
         break;
