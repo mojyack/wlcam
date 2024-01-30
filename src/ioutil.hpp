@@ -1,6 +1,7 @@
 #pragma once
 #include <charconv>
 #include <iostream>
+#include <optional>
 
 namespace stdio {
 template <class... Args>
