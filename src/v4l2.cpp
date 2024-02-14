@@ -3,8 +3,9 @@
 #include <unistd.h>
 
 #include "assert.hpp"
-#include "ioctl-debug.hpp"
 #include "v4l2.hpp"
+
+// #include "ioctl-debug.hpp"
 
 namespace {
 template <class... Args>
