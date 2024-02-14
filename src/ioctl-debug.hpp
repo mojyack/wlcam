@@ -1,7 +1,7 @@
 #pragma once
 #include <filesystem>
-#include <sys/fcntl.h>
 
+#include <fcntl.h>
 #include <linux/media.h>
 #include <linux/v4l2-subdev.h>
 #include <linux/videodev2.h>
