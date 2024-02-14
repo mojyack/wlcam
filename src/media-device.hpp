@@ -3,6 +3,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <sys/types.h>
+
 struct Link {
     uint32_t id;
     uint32_t src_pad_id;
