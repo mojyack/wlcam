@@ -28,9 +28,9 @@ auto read_sized(const std::string_view prompt, const size_t limit) -> size_t {
 auto run() -> bool {
     print("searching for ipu3 devices");
 
-    const auto udev_devices = dev::enumerate();
-    auto       csi2_devices = std::vector<MediaDevice>();
-    auto       imgu_devices = std::vector<MediaDevice>();
+    unwrap_ob(udev_devices, dev::enumerate());
+    auto csi2_devices = std::vector<MediaDevice>();
+    auto imgu_devices = std::vector<MediaDevice>();
     for(const auto& [devnum, devnode] : udev_devices) {
         if(major(devnum) != 246) {
             continue;

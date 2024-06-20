@@ -1,45 +1,41 @@
 #include <libudev.h>
 
-#include "macros/assert.hpp"
+#include "macros/autoptr.hpp"
+#include "macros/unwrap.hpp"
 #include "udev.hpp"
 #include "util/assert.hpp"
 
+declare_autoptr(Udev, udev, udev_unref);
+declare_autoptr(UdevEnum, udev_enumerate, udev_enumerate_unref);
+declare_autoptr(UdevDevice, udev_device, udev_device_unref);
+
 namespace dev {
-auto enumerate() -> std::unordered_map<dev_t, std::string> {
+auto enumerate() -> std::optional<std::unordered_map<dev_t, std::string>> {
     auto ret = std::unordered_map<dev_t, std::string>();
 
-    const auto lib = udev_new();
-    DYN_ASSERT(lib != NULL);
+    auto lib = AutoUdev(udev_new());
+    assert_o(lib.get() != NULL);
 
-    const auto udev_enum = udev_enumerate_new(lib);
-    DYN_ASSERT(udev_enum != NULL);
+    auto udev_enum = AutoUdevEnum(udev_enumerate_new(lib.get()));
+    assert_o(udev_enum.get() != NULL);
 
-    DYN_ASSERT(udev_enumerate_add_match_subsystem(udev_enum, "media") >= 0);
-    DYN_ASSERT(udev_enumerate_add_match_subsystem(udev_enum, "video4linux") >= 0);
-    DYN_ASSERT(udev_enumerate_add_match_is_initialized(udev_enum) >= 0);
-    DYN_ASSERT(udev_enumerate_scan_devices(udev_enum) >= 0);
+    assert_o(udev_enumerate_add_match_subsystem(udev_enum.get(), "media") >= 0);
+    assert_o(udev_enumerate_add_match_subsystem(udev_enum.get(), "video4linux") >= 0);
+    assert_o(udev_enumerate_add_match_is_initialized(udev_enum.get()) >= 0);
+    assert_o(udev_enumerate_scan_devices(udev_enum.get()) >= 0);
 
-    const auto ents = udev_enumerate_get_list_entry(udev_enum);
-    DYN_ASSERT(ents != NULL);
+    unwrap_po_mut(ents, udev_enumerate_get_list_entry(udev_enum.get()));
 
-    for(auto ent = ents; ent; ent = udev_list_entry_get_next(ent)) {
+    for(auto ent = &ents; ent; ent = udev_list_entry_get_next(ent)) {
         const auto syspath = udev_list_entry_get_name(ent);
 
-        const auto dev = udev_device_new_from_syspath(lib, syspath);
-        DYN_ASSERT(dev != NULL);
+        auto dev = AutoUdevDevice(udev_device_new_from_syspath(lib.get(), syspath));
+        assert_o(dev.get() != NULL);
 
-        const auto devnode = udev_device_get_devnode(dev);
-        DYN_ASSERT(devnode != NULL);
-
-        const auto devnum = udev_device_get_devnum(dev);
-
-        ret[devnum] = devnode;
-
-        udev_device_unref(dev);
+        unwrap_po_mut(devnode, udev_device_get_devnode(dev.get()));
+        const auto devnum = udev_device_get_devnum(dev.get());
+        ret[devnum]       = devnode;
     }
-
-    udev_enumerate_unref(udev_enum);
-    udev_unref(lib);
 
     return ret;
 }

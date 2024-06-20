@@ -34,7 +34,7 @@ class IPU3WindowCallbacks : public WindowCallbacks {
 auto run(const int argc, const char* const argv[]) -> bool {
     const auto args = ipu3::parse_args(argc, argv);
 
-    const auto node_map = dev::enumerate();
+    unwrap_ob(node_map, dev::enumerate());
     unwrap_ob_mut(cio2_device, parse_device(args.cio2_devnode, node_map));
     assert_b(cio2_device.disable_all_links());
 
