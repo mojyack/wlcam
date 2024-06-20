@@ -1,4 +1,4 @@
-simple_files = files(
+uvc_files = files(
   'args.cpp',
   'camera.cpp',
   'main.cpp',
@@ -10,8 +10,8 @@ simple_files = files(
   '../yuv.cpp',
 ) + graphics_files + gawl_files
 
-simpel_deps = [dependency('libturbojpeg')] + gawl_deps
+uvc_deps = [dependency('libturbojpeg')] + gawl_deps
 
-executable('wlcam-uvc', simple_files,
-            dependencies : simpel_deps,
+executable('wlcam-uvc', uvc_files,
+            dependencies : uvc_deps,
             install : true)
