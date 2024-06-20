@@ -32,11 +32,6 @@ auto main(const int argc, const char* const argv[]) -> int {
         return 0;
     }
 
-    if(args.savedir == nullptr) {
-        print("no output directory specified");
-        exit(1);
-    }
-
     v4l2::set_format(fd, args.pixel_format, args.width, args.height);
     v4l2::set_interval(fd, 1, args.fps);
 

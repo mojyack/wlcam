@@ -74,5 +74,7 @@ auto parse_args(const int argc, const char* const argv[]) -> Args {
         }
     }
 
+    DYN_ASSERT(args.savedir != nullptr, "no --output argument");
+
     return args;
 }
