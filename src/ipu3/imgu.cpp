@@ -8,7 +8,7 @@
 #include "imgu.hpp"
 
 namespace ipu3 {
-auto ImgUDevice::init(MediaDevice& media, const std::string_view entity_name) -> void {
+auto ImgUDevice::init(MediaDevice& media, const std::string_view entity_name) -> bool {
     auto& imgu = *media.find_entity_by_name(entity_name);
     this->imgu = FileDescriptor(open(imgu.dev_node.data(), O_RDWR));
     DYN_ASSERT(this->imgu.as_handle() >= 0);
@@ -63,14 +63,16 @@ auto ImgUDevice::init(MediaDevice& media, const std::string_view entity_name) ->
     DYN_ASSERT(imgu_stat_pad_index != UINT_MAX);
 
     // enable imgu <- input
-    media.configure_link(imgu.pads[imgu_input_pad_index].links[0], true);
+    assert_b(media.configure_link(imgu.pads[imgu_input_pad_index].links[0], true));
     // enable imgu -> output
-    media.configure_link(imgu.pads[imgu_output_pad_index].links[0], true);
+    assert_b(media.configure_link(imgu.pads[imgu_output_pad_index].links[0], true));
     // enable imgu -> viewfinder
-    media.configure_link(imgu.pads[imgu_viewfinder_pad_index].links[0], true);
+    assert_b(media.configure_link(imgu.pads[imgu_viewfinder_pad_index].links[0], true));
     // enable imgu <- parameters
-    media.configure_link(imgu.pads[imgu_parameters_pad_index].links[0], true);
+    assert_b(media.configure_link(imgu.pads[imgu_parameters_pad_index].links[0], true));
     // enable imgu -> stat
-    media.configure_link(imgu.pads[imgu_stat_pad_index].links[0], true);
+    assert_b(media.configure_link(imgu.pads[imgu_stat_pad_index].links[0], true));
+
+    return true;
 }
 } // namespace ipu3

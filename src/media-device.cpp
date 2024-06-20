@@ -4,12 +4,12 @@
 #include <sys/sysmacros.h>
 #include <unistd.h>
 
-#include "macros/assert.hpp"
+#include "macros/unwrap.hpp"
 #include "media-device.hpp"
 #include "util/assert.hpp"
 
 namespace {
-auto find_interface(const media_v2_topology& topology, const uint32_t entity_id) -> Interface {
+auto find_interface(const media_v2_topology& topology, const uint32_t entity_id) -> std::optional<Interface> {
     for(auto l = 0u; l < topology.num_links; l += 1) {
         const auto& lp = (std::bit_cast<media_v2_link*>(topology.ptr_links))[l];
         if((lp.flags & MEDIA_LNK_FL_LINK_TYPE) != MEDIA_LNK_FL_INTERFACE_LINK) {
@@ -21,20 +21,22 @@ auto find_interface(const media_v2_topology& topology, const uint32_t entity_id)
         for(auto i = 0u; i < topology.num_interfaces; i += 1) {
             const auto& ip = (std::bit_cast<media_v2_interface*>(topology.ptr_interfaces))[i];
             if(ip.id == lp.source_id) {
-                return {ip.devnode.major, ip.devnode.minor, ip.intf_type};
+                return Interface{ip.devnode.major, ip.devnode.minor, ip.intf_type};
             }
         }
-        PANIC("unknown interface");
+        WARN("unknown interface");
+        return std::nullopt;
     }
-    PANIC("the entity has no interface");
+    WARN("the entity has no interface");
+    return std::nullopt;
 }
 
-auto parse_topology(const media_v2_topology& topology, const std::unordered_map<dev_t, std::string>& node_map) -> std::vector<Entity> {
+auto parse_topology(const media_v2_topology& topology, const std::unordered_map<dev_t, std::string>& node_map) -> std::optional<std::vector<Entity>> {
     auto entities = std::vector<Entity>(topology.num_entities);
     for(auto e = 0u; e < topology.num_entities; e += 1) {
-        const auto& ep        = (std::bit_cast<media_v2_entity*>(topology.ptr_entities))[e];
-        const auto  interface = find_interface(topology, ep.id);
-        const auto  dev_node  = node_map.find(makedev(interface.major, interface.minor))->second;
+        const auto& ep = (std::bit_cast<media_v2_entity*>(topology.ptr_entities))[e];
+        unwrap_oo(interface, find_interface(topology, ep.id));
+        const auto dev_node = node_map.find(makedev(interface.major, interface.minor))->second;
 
         auto& entity = entities[e];
         entity       = Entity{ep.id, ep.function, interface, ep.name, {}, dev_node, {}};
@@ -97,19 +99,20 @@ auto MediaDevice::find_pad_owner_and_index(const uint32_t pad_id) const -> std::
     return {nullptr, 0};
 }
 
-auto MediaDevice::configure_link(Link& link, const bool enable) -> void {
+auto MediaDevice::configure_link(Link& link, const bool enable) -> bool {
     auto desc               = media_link_desc();
     auto [src, src_index]   = find_pad_owner_and_index(link.src_pad_id);
     auto [sink, sink_index] = find_pad_owner_and_index(link.sink_pad_id);
     desc.source             = {src->id, uint16_t(src_index), MEDIA_PAD_FL_SOURCE, {}};
     desc.sink               = {sink->id, uint16_t(sink_index), MEDIA_PAD_FL_SINK, {}};
     desc.flags              = (link.flags & ~MEDIA_LNK_FL_ENABLED) | (enable ? MEDIA_LNK_FL_ENABLED : 0);
-    DYN_ASSERT(ioctl(fd, MEDIA_IOC_SETUP_LINK, &desc) == 0);
+    assert_b(ioctl(fd.as_handle(), MEDIA_IOC_SETUP_LINK, &desc) == 0);
 
     link.flags = desc.flags;
+    return true;
 }
 
-auto MediaDevice::disable_all_links() -> void {
+auto MediaDevice::disable_all_links() -> bool {
     for(auto& e : entities) {
         for(auto ip = 0u; ip < e.pads.size(); ip += 1) {
             auto& p = e.pads[ip];
@@ -120,10 +123,11 @@ auto MediaDevice::disable_all_links() -> void {
                 if(l.flags & MEDIA_LNK_FL_IMMUTABLE) {
                     continue;
                 }
-                configure_link(l, false);
+                assert_b(configure_link(l, false));
             }
         }
     }
+    return true;
 }
 
 auto MediaDevice::debug_print() const -> void {
@@ -154,15 +158,15 @@ auto MediaDevice::debug_print() const -> void {
     }
 }
 
-auto parse_device(const char* const device, const std::unordered_map<dev_t, std::string>& node_map) -> MediaDevice {
-    const int fd = open(device, O_RDWR);
-    DYN_ASSERT(fd >= 0);
+auto parse_device(const char* const device, const std::unordered_map<dev_t, std::string>& node_map) -> std::optional<MediaDevice> {
+    auto fd = FileDescriptor(open(device, O_RDWR));
+    assert_o(fd.as_handle() >= 0);
 
     auto info = media_device_info();
-    DYN_ASSERT(ioctl(fd, MEDIA_IOC_DEVICE_INFO, &info) == 0);
+    assert_o(ioctl(fd.as_handle(), MEDIA_IOC_DEVICE_INFO, &info) == 0);
 
     auto topology = media_v2_topology();
-    DYN_ASSERT(ioctl(fd, MEDIA_IOC_G_TOPOLOGY, &topology) == 0);
+    assert_o(ioctl(fd.as_handle(), MEDIA_IOC_G_TOPOLOGY, &topology) == 0);
 
     auto entities   = std::vector<media_v2_entity>(topology.num_entities);
     auto interfaces = std::vector<media_v2_interface>(topology.num_interfaces);
@@ -173,7 +177,9 @@ auto parse_device(const char* const device, const std::unordered_map<dev_t, std:
     topology.ptr_interfaces = std::bit_cast<uintptr_t>(interfaces.data());
     topology.ptr_links      = std::bit_cast<uintptr_t>(links.data());
     topology.ptr_pads       = std::bit_cast<uintptr_t>(pads.data());
-    DYN_ASSERT(ioctl(fd, MEDIA_IOC_G_TOPOLOGY, &topology) == 0);
+    assert_o(ioctl(fd.as_handle(), MEDIA_IOC_G_TOPOLOGY, &topology) == 0);
 
-    return {device, info.driver, parse_topology(topology, node_map), fd};
+    unwrap_oo_mut(parsed_topology, parse_topology(topology, node_map));
+
+    return MediaDevice{device, info.driver, std::move(parsed_topology), std::move(fd)};
 }

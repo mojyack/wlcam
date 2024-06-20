@@ -17,6 +17,6 @@ struct ImgUDevice {
     FileDescriptor viewfinder;
     FileDescriptor stat;
 
-    auto init(MediaDevice& media, std::string_view entity_name) -> void;
+    auto init(MediaDevice& media, std::string_view entity_name) -> bool;
 };
 } // namespace ipu3

@@ -42,8 +42,8 @@ struct CIO2Device {
     FileDescriptor output;
     Sensor         sensor;
 
-    auto init(Entity* csi2) -> void;
-    auto init(std::string_view entity_name) -> void;
+    auto init(Entity* csi2) -> bool;
+    auto init(std::string_view entity_name) -> bool;
     auto get_formats() const -> std::vector<Format>;
 
     CIO2Device(MediaDevice* const media)

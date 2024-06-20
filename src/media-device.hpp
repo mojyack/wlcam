@@ -1,9 +1,12 @@
 #pragma once
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include <sys/types.h>
+
+#include "util/fd.hpp"
 
 struct Link {
     uint32_t id;
@@ -38,14 +41,14 @@ struct MediaDevice {
     std::string         dev_node;
     std::string         driver;
     std::vector<Entity> entities;
-    int                 fd;
+    FileDescriptor      fd;
 
     auto find_entity_by_id(uint32_t id) -> Entity*;
     auto find_entity_by_name(std::string_view name) -> Entity*;
     auto find_pad_owner_and_index(uint32_t pad_id) const -> std::tuple<const Entity*, size_t>;
-    auto configure_link(Link& link, bool enable) -> void;
-    auto disable_all_links() -> void;
+    auto configure_link(Link& link, bool enable) -> bool;
+    auto disable_all_links() -> bool;
     auto debug_print() const -> void;
 };
 
-auto parse_device(const char* const device, const std::unordered_map<dev_t, std::string>& node_map) -> MediaDevice;
+auto parse_device(const char* const device, const std::unordered_map<dev_t, std::string>& node_map) -> std::optional<MediaDevice>;

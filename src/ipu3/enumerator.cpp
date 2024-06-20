@@ -4,8 +4,10 @@
 #include <linux/v4l2-subdev.h>
 
 #include "../ioutil.hpp"
+#include "../macros/unwrap.hpp"
 #include "../media-device.hpp"
 #include "../udev.hpp"
+#include "../util/assert.hpp"
 #include "../util/print.hpp"
 #include "cio2.hpp"
 #include "imgu.hpp"
@@ -23,7 +25,7 @@ auto read_sized(const std::string_view prompt, const size_t limit) -> size_t {
 }
 } // namespace
 
-auto main() -> int {
+auto run() -> bool {
     print("searching for ipu3 devices");
 
     const auto udev_devices = dev::enumerate();
@@ -34,13 +36,13 @@ auto main() -> int {
             continue;
         }
 
-        auto media_deivce = parse_device(devnode.c_str(), udev_devices);
-        if(media_deivce.find_entity_by_name("ipu3-csi2 0") != nullptr) {
+        unwrap_ob_mut(media_device, parse_device(devnode.c_str(), udev_devices));
+        if(media_device.find_entity_by_name("ipu3-csi2 0") != nullptr) {
             print("found csi2");
-            csi2_devices.emplace_back(media_deivce);
-        } else if(media_deivce.find_entity_by_name("ipu3-imgu 0") != nullptr) {
+            csi2_devices.emplace_back(std::move(media_device));
+        } else if(media_device.find_entity_by_name("ipu3-imgu 0") != nullptr) {
             print("found imgu");
-            imgu_devices.emplace_back(media_deivce);
+            imgu_devices.emplace_back(std::move(media_device));
         }
     }
 
@@ -56,8 +58,8 @@ auto main() -> int {
     auto& csi2_device = csi2_devices[read_sized("select csi2 device", csi2_devices.size())];
     auto& imgu_device = imgu_devices[read_sized("select imgu device", imgu_devices.size())];
 
-    csi2_device.disable_all_links();
-    imgu_device.disable_all_links();
+    assert_b(csi2_device.disable_all_links());
+    assert_b(imgu_device.disable_all_links());
 
     auto sensors = std::vector<const Entity*>();
     for(auto i = 0; i < 4; i += 1) {
@@ -128,4 +130,8 @@ auto main() -> int {
     }
 
     return 0;
+}
+
+auto main() -> int {
+    return run() ? 0 : 1;
 }

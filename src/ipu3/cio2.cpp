@@ -73,13 +73,13 @@ auto Sensor::create(MediaDevice& media, const Entity& sensor) -> Sensor {
     return Sensor{&sensor, pad_index, sensor.dev_node, FileDescriptor(fd), std::move(lens)};
 }
 
-auto CIO2Device::init(Entity* const csi2) -> void {
+auto CIO2Device::init(Entity* const csi2) -> bool {
     auto& link = csi2->pads[0].links[0]; // link to sensor
 
     const auto [sensor, _1] = media->find_pad_owner_and_index(link.src_pad_id);
     DYN_ASSERT(sensor != nullptr);
 
-    media->configure_link(link, true);
+    assert_b(media->configure_link(link, true));
 
     cio2 = FileDescriptor(open(csi2->dev_node.data(), O_RDWR));
     DYN_ASSERT(cio2.as_handle() >= 0);
@@ -89,9 +89,11 @@ auto CIO2Device::init(Entity* const csi2) -> void {
     const auto output = media->find_entity_by_name(build_string("ipu3-cio2 ", csi2->name.back()));
     this->output      = FileDescriptor(open(output->dev_node.data(), O_RDWR));
     DYN_ASSERT(this->output.as_handle() >= 0);
+
+    return true;
 }
 
-auto CIO2Device::init(const std::string_view entity_name) -> void {
+auto CIO2Device::init(const std::string_view entity_name) -> bool {
     const auto csi2 = media->find_entity_by_name(build_string(entity_name));
     DYN_ASSERT(csi2 != nullptr);
 

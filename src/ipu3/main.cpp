@@ -31,21 +31,21 @@ class IPU3WindowCallbacks : public WindowCallbacks {
         : WindowCallbacks(context) {}
 };
 
-auto run(const int argc, const char* const argv[]) -> int {
+auto run(const int argc, const char* const argv[]) -> bool {
     const auto args = ipu3::parse_args(argc, argv);
 
-    const auto node_map    = dev::enumerate();
-    auto       cio2_device = parse_device(args.cio2_devnode, node_map);
-    cio2_device.disable_all_links();
+    const auto node_map = dev::enumerate();
+    unwrap_ob_mut(cio2_device, parse_device(args.cio2_devnode, node_map));
+    assert_b(cio2_device.disable_all_links());
 
-    auto imgu_device = parse_device(args.imgu_devnode, node_map);
-    imgu_device.disable_all_links();
+    unwrap_ob_mut(imgu_device, parse_device(args.imgu_devnode, node_map));
+    assert_b(imgu_device.disable_all_links());
 
     auto imgu_0 = ipu3::ImgUDevice();
-    imgu_0.init(imgu_device, args.imgu_entity);
+    assert_b(imgu_0.init(imgu_device, args.imgu_entity));
 
     auto cio2_0 = ipu3::cio2::CIO2Device(&cio2_device);
-    cio2_0.init(args.cio2_entity);
+    assert_b(cio2_0.init(args.cio2_entity));
 
     constexpr auto imgu_input_format = v4l2_fourcc('i', 'p', '3', 'b');
     constexpr auto num_buffers       = 3;
