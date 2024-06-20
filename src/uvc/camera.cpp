@@ -6,7 +6,7 @@
 #include <unistd.h>
 
 #include "../jpeg.hpp"
-#include "../macros/assert.hpp"
+#include "../macros/unwrap.hpp"
 #include "../remote-server.hpp"
 #include "../util/assert.hpp"
 #include "../yuv.hpp"
@@ -61,7 +61,7 @@ struct RecordContext {
 };
 } // namespace
 
-auto Camera::worker_main() -> void {
+auto Camera::worker_main() -> bool {
     auto fds      = std::array<pollfd, 1>();
     fds[0].fd     = fd;
     fds[0].events = POLLIN;
@@ -87,7 +87,7 @@ loop:
         if(event_fifo) {
             event_fifo->send_event(RemoteEvents::Bye{});
         }
-        return;
+        return true;
     }
     DYN_ASSERT(poll(fds.data(), 1, 0) != -1);
     const auto index = v4l2::dequeue_buffer(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE);
@@ -110,10 +110,10 @@ loop:
         case v4l2::fourcc("YUYV"): {
             const auto [ybuf, ubuf, vbuf] = yuv::yuv422i_to_yuv422p(buf, width, height, fmt.bytesperline);
 
-            const auto [jpegbuf, jpegsize] = jpg::encode_yuvp_to_jpeg(width, height, fmt.bytesperline / 2, 2, 1, ybuf.data(), ubuf.data(), vbuf.data());
-            const auto fd                  = open(path.c_str(), O_RDWR | O_CREAT, 0644);
-            DYN_ASSERT(write(fd, jpegbuf.get(), jpegsize) == ssize_t(jpegsize));
-            close(fd);
+            unwrap_ob(jpeg, jpg::encode_yuvp_to_jpeg(width, height, fmt.bytesperline / 2, 2, 1, ybuf.data(), ubuf.data(), vbuf.data()));
+            const auto fd = FileDescriptor(open(path.c_str(), O_RDWR | O_CREAT, 0644));
+            assert_b(fd.as_handle() >= 0);
+            assert_b(write(fd.as_handle(), jpeg.buffer.get(), jpeg.size) == ssize_t(jpeg.size));
 
             context->ui_command = Command::TakePhotoDone;
         } break;
@@ -121,10 +121,10 @@ loop:
             const auto uvbuf = buf + fmt.bytesperline * height;
             yuv::yuv420sp_uvsp_to_uvp(uvbuf, ubuf, vbuf, width, height, fmt.bytesperline);
 
-            const auto [jpegbuf, jpegsize] = jpg::encode_yuvp_to_jpeg(width, height, fmt.bytesperline, 2, 2, buf, ubuf, vbuf);
-            const auto fd                  = open(path.c_str(), O_RDWR | O_CREAT, 0644);
-            DYN_ASSERT(write(fd, jpegbuf.get(), jpegsize) == ssize_t(jpegsize));
-            close(fd);
+            unwrap_ob(jpeg, jpg::encode_yuvp_to_jpeg(width, height, fmt.bytesperline, 2, 2, buf, ubuf, vbuf));
+            const auto fd = FileDescriptor(open(path.c_str(), O_RDWR | O_CREAT, 0644));
+            assert_b(fd.as_handle() >= 0);
+            assert_b(write(fd.as_handle(), jpeg.buffer.get(), jpeg.size) == ssize_t(jpeg.size));
 
             context->ui_command = Command::TakePhotoDone;
         } break;
@@ -173,7 +173,7 @@ loop:
     switch(fmt.pixelformat) {
     case v4l2::fourcc("MJPG"): {
         constexpr auto downscale_factor = 4;
-        const auto     bufs             = jpg::decode_jpeg_to_yuvp(static_cast<std::byte*>(buffers[index].start), buffers[index].length, downscale_factor);
+        unwrap_ob(bufs, jpg::decode_jpeg_to_yuvp(static_cast<std::byte*>(buffers[index].start), buffers[index].length, downscale_factor));
         img.reset(new GraphicLike(Tag<PlanarGraphic>(), width / downscale_factor, height / downscale_factor, fmt.bytesperline, bufs.ppc_x, bufs.ppc_y, bufs.y.data(), bufs.u.data(), bufs.v.data()));
     } break;
     case v4l2::fourcc("YUYV"): {

@@ -5,7 +5,7 @@
 #include "../file.hpp"
 #include "../gawl/wayland/application.hpp"
 #include "../jpeg.hpp"
-#include "../macros/assert.hpp"
+#include "../macros/unwrap.hpp"
 #include "../media-device.hpp"
 #include "../remote-server.hpp"
 #include "../udev.hpp"
@@ -162,7 +162,7 @@ auto main(const int argc, const char* const argv[]) -> int {
     init_yuv420sp_shader();
 
     auto finish_camera_thread = false;
-    auto camera_thread        = std::thread([&]() {
+    auto camera_thread        = std::thread([&]() -> bool {
         auto       window_context = wlwindow->fork_context();
         auto       file_manager   = FileManager(args.savedir);
         auto       event_fifo     = args.event_fifo != nullptr ? RemoteServer(args.event_fifo) : RemoteServer();
@@ -209,10 +209,10 @@ auto main(const int argc, const char* const argv[]) -> int {
                 const auto uvbuf = buf + output_stride * output_height;
                 yuv::yuv420sp_uvsp_to_uvp(uvbuf, ubuf.data(), vbuf.data(), output_width, output_height, output_stride);
 
-                const auto [jpegbuf, jpegsize] = jpg::encode_yuvp_to_jpeg(output_width, output_height, output_stride, 2, 2, buf, ubuf.data(), vbuf.data());
-                const auto fd                  = open(path.c_str(), O_RDWR | O_CREAT, 0644);
-                DYN_ASSERT(write(fd, jpegbuf.get(), jpegsize) == ssize_t(jpegsize));
-                close(fd);
+                unwrap_ob(jpeg, jpg::encode_yuvp_to_jpeg(output_width, output_height, output_stride, 2, 2, buf, ubuf.data(), vbuf.data()));
+                const auto fd                  = FileDescriptor(open(path.c_str(), O_RDWR | O_CREAT, 0644));
+                assert_b(fd.as_handle() >= 0);
+                assert_b(write(fd.as_handle(), jpeg.buffer.get(), jpeg.size) == ssize_t(jpeg.size));
 
                 context.ui_command = Command::TakePhotoDone;
             } break;
@@ -227,6 +227,7 @@ auto main(const int argc, const char* const argv[]) -> int {
         }
 
         event_fifo.send_event(RemoteEvents::Bye{});
+        return true;
     });
 
     app.run();

@@ -19,7 +19,7 @@ class Camera {
     uint32_t             fps;
     bool                 running = false;
 
-    auto worker_main() -> void;
+    auto worker_main() -> bool;
 
   public:
     auto run() -> void;
