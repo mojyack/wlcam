@@ -21,10 +21,11 @@ class UVCWindowCallbacks : public WindowCallbacks {
 };
 
 auto run(const int argc, const char* const argv[]) -> bool {
-    const auto args = parse_args(argc, argv);
+    unwrap_ob(args, parse_args(argc, argv));
 
-    const int fd = open(args.video_device, O_RDWR);
-    DYN_ASSERT(fd != -1);
+    const auto fdh = FileDescriptor(open(args.video_device, O_RDWR));
+    const auto fd  = fdh.as_handle();
+    assert_b(fd >= 0);
     unwrap_ob(is_capture_device, v4l2::is_capture_device(fd));
     assert_b(is_capture_device, "not a capture device");
 
@@ -64,7 +65,8 @@ auto run(const int argc, const char* const argv[]) -> bool {
         init_yuv420sp_shader();
         break;
     default:
-        PANIC("unsupported pixel format");
+        WARN("unsupported pixel format");
+        return false;
     }
 
     unwrap_ob(fmt, v4l2::get_current_format(fd));

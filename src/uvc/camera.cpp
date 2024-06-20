@@ -13,11 +13,10 @@
 #include "camera.hpp"
 
 namespace {
-auto save_jpeg_frame(const char* const path, const std::byte* const ptr) -> void {
-    const auto fd   = open(path, O_RDWR | O_CREAT, 0644);
+auto save_jpeg_frame(const char* const path, const std::byte* const ptr) -> bool {
+    const auto fd   = FileDescriptor(open(path, O_RDWR | O_CREAT, 0644));
     const auto size = jpg::calc_jpeg_size(ptr);
-    DYN_ASSERT(write(fd, ptr, size) == ssize_t(size));
-    close(fd);
+    return write(fd.as_handle(), ptr, size) == ssize_t(size);
 }
 
 class Timer {
@@ -89,7 +88,7 @@ loop:
         }
         return true;
     }
-    DYN_ASSERT(poll(fds.data(), 1, 0) != -1);
+    assert_b(poll(fds.data(), 1, 0) != -1);
     unwrap_ob(index, v4l2::dequeue_buffer(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE));
 
     // if recording, save elapsed time
@@ -104,7 +103,7 @@ loop:
         const auto buf  = std::bit_cast<const std::byte*>(buffers[index].start);
         switch(fmt.pixelformat) {
         case v4l2::fourcc("MJPG"): {
-            save_jpeg_frame(path.data(), buf);
+            assert_b(save_jpeg_frame(path.data(), buf));
             context->ui_command = Command::TakePhotoDone;
         } break;
         case v4l2::fourcc("YUYV"): {

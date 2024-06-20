@@ -17,4 +17,4 @@ struct Args {
     bool        movie        = false;
 };
 
-auto parse_args(int argc, const char* const argv[]) -> Args;
+auto parse_args(int argc, const char* const argv[]) -> std::optional<Args>;

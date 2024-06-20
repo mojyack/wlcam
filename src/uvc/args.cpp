@@ -1,6 +1,6 @@
 #include <string_view>
 
-#include "../macros/assert.hpp"
+#include "../macros/unwrap.hpp"
 #include "../util/assert.hpp"
 #include "../util/charconv.hpp"
 #include "args.hpp"
@@ -20,24 +20,14 @@ options:
   --fps FPS                     refresh rate (30)
   --pix-format {MJPG|YUYV|NV12} pixel format (mpeg)
 )str";
-
-template <class T>
-auto parse(const std::string_view str) -> T {
-    const auto o = from_chars<T>(str);
-    if(!o) {
-        print("not a number: ", str);
-        exit(1);
-    }
-    return o.value();
 }
-} // namespace
 
-auto parse_args(const int argc, const char* const argv[]) -> Args {
+auto parse_args(const int argc, const char* const argv[]) -> std::optional<Args> {
     auto args = Args();
 
-    const auto increment = [argc](int& i) -> void {
+    const auto increment = [argc](int& i) -> bool {
         i += 1;
-        DYN_ASSERT(i < argc, "no following argument");
+        return i < argc;
     };
 
     for(auto i = 1; i < argc; i += 1) {
@@ -50,31 +40,34 @@ auto parse_args(const int argc, const char* const argv[]) -> Args {
         } else if(arg == "-m" || arg == "--movie") {
             args.movie = true;
         } else if(arg == "-d" || arg == "--device") {
-            increment(i);
+            assert_o(increment(i));
             args.video_device = argv[i];
         } else if(arg == "-s" || arg == "--server") {
-            increment(i);
+            assert_o(increment(i));
             args.event_fifo = argv[i];
         } else if(arg == "-o" || arg == "--output") {
-            increment(i);
+            assert_o(increment(i));
             args.savedir = argv[i];
         } else if(arg == "--width") {
-            increment(i);
-            args.width = parse<int>(argv[i]);
+            assert_o(increment(i));
+            unwrap_oo(num, from_chars<int>(argv[i]));
+            args.width = num;
         } else if(arg == "--height") {
-            increment(i);
-            args.height = parse<int>(argv[i]);
+            assert_o(increment(i));
+            unwrap_oo(num, from_chars<int>(argv[i]));
+            args.height = num;
         } else if(arg == "--fps") {
-            increment(i);
-            args.fps = parse<int>(argv[i]);
+            assert_o(increment(i));
+            unwrap_oo(num, from_chars<int>(argv[i]));
+            args.fps = num;
         } else if(arg == "--pix-format") {
-            increment(i);
-            DYN_ASSERT(strlen(argv[i]) == 4, "invalid pixel format");
+            assert_o(increment(i));
+            assert_o(strlen(argv[i]) == 4, "invalid pixel format");
             args.pixel_format = v4l2::fourcc(argv[i]);
         }
     }
 
-    DYN_ASSERT(args.savedir != nullptr, "no --output argument");
+    assert_o(args.savedir != nullptr, "no --output argument");
 
     return args;
 }
