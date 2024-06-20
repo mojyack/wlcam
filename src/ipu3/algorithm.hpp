@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include <utility>
 
 namespace algo {
@@ -19,7 +20,7 @@ struct PipeConfig {
     Size   gdc;
 };
 
-auto calculate_pipeline_config(Size input, Size output, Size viewfinder) -> PipeConfig;
+auto calculate_pipeline_config(Size input, Size output, Size viewfinder) -> std::optional<PipeConfig>;
 auto calculate_bds_grid(Size bds) -> std::pair<Size, Size>;
 auto align_size(Size size) -> Size;
 auto calculate_best_viewfinder(Size output, Size window) -> Size;

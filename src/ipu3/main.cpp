@@ -32,7 +32,7 @@ class IPU3WindowCallbacks : public WindowCallbacks {
 };
 
 auto run(const int argc, const char* const argv[]) -> bool {
-    const auto args = ipu3::parse_args(argc, argv);
+    unwrap_ob(args, ipu3::parse_args(argc, argv));
 
     unwrap_ob(node_map, dev::enumerate());
     unwrap_ob_mut(cio2_device, parse_device(args.cio2_devnode, node_map));
@@ -61,10 +61,10 @@ auto run(const int argc, const char* const argv[]) -> bool {
     assert_b(v4l2::set_format_subdev(cio2_fd, 0, args.sensor_mbus_code, args.sensor_width, args.sensor_height));
     unwrap_ob(cio_output_fmt, v4l2::set_format_mp(cio2_output_fd, outbuf_mp, imgu_input_format, 1, args.sensor_width, args.sensor_height, nullptr));
 
-    const auto output          = algo::align_size({args.width, args.height});
-    const auto viewfinder      = algo::calculate_best_viewfinder(output, {1920, 1280}); // TODO: reflect window size
-    const auto pipeline_config = algo::calculate_pipeline_config({args.sensor_width, args.sensor_height}, output, viewfinder);
-    const auto bds_grid        = uapi::create_bds_grid(pipeline_config.bds);
+    const auto output     = algo::align_size({args.width, args.height});
+    const auto viewfinder = algo::calculate_best_viewfinder(output, {1920, 1280}); // TODO: reflect window size
+    unwrap_ob(pipeline_config, algo::calculate_pipeline_config({args.sensor_width, args.sensor_height}, output, viewfinder));
+    const auto bds_grid = uapi::create_bds_grid(pipeline_config.bds);
 
     const auto imgu_fd        = imgu_0.imgu.as_handle();
     const auto imgu_input_fd  = imgu_0.input.as_handle();
@@ -125,7 +125,7 @@ auto run(const int argc, const char* const argv[]) -> bool {
         output_mmap_ptrs[i] = mmap(NULL, imgu_output_buffers[i].length,
                                    PROT_READ | PROT_WRITE,
                                    MAP_SHARED, imgu_output_buffers[i].fd.as_handle(), 0);
-        DYN_ASSERT(output_mmap_ptrs[i] != MAP_FAILED, errno);
+        assert_b(output_mmap_ptrs[i] != MAP_FAILED, errno);
     }
 
     auto vf_mmap_ptrs = std::array<void*, num_buffers>();
@@ -133,7 +133,7 @@ auto run(const int argc, const char* const argv[]) -> bool {
         vf_mmap_ptrs[i] = mmap(NULL, imgu_vf_buffers[i].length,
                                PROT_READ | PROT_WRITE,
                                MAP_SHARED, imgu_vf_buffers[i].fd.as_handle(), 0);
-        DYN_ASSERT(vf_mmap_ptrs[i] != MAP_FAILED, errno);
+        assert_b(vf_mmap_ptrs[i] != MAP_FAILED, errno);
     }
 
     auto params_mmap_ptrs = std::array<ipu3_uapi_params*, num_buffers>();
@@ -141,7 +141,7 @@ auto run(const int argc, const char* const argv[]) -> bool {
         params_mmap_ptrs[i] = (ipu3_uapi_params*)mmap(NULL, imgu_parameter_buffers[i].length,
                                                       PROT_READ | PROT_WRITE,
                                                       MAP_SHARED, imgu_parameter_buffers[i].fd.as_handle(), 0);
-        DYN_ASSERT(params_mmap_ptrs[i] != MAP_FAILED, errno);
+        assert_b(params_mmap_ptrs[i] != MAP_FAILED, errno);
         memset(params_mmap_ptrs[i], 0, imgu_parameter_buffers[i].length);
         init_params_buffer(*params_mmap_ptrs[i], pipeline_config, bds_grid);
     }

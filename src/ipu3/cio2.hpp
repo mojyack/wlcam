@@ -30,10 +30,10 @@ struct Sensor {
     FileDescriptor      fd;
     std::optional<Lens> lens;
 
-    auto enum_pad_codes() const -> std::vector<uint32_t>;
-    auto enum_pad_sizes(const uint32_t mbus_code) const -> std::vector<SizeRange>;
+    auto enum_pad_codes() const -> std::optional<std::vector<uint32_t>>;
+    auto enum_pad_sizes(const uint32_t mbus_code) const -> std::optional<std::vector<SizeRange>>;
 
-    static auto create(MediaDevice& media, const Entity& sensor) -> Sensor;
+    static auto create(MediaDevice& media, const Entity& sensor) -> std::optional<Sensor>;
 };
 
 struct CIO2Device {
@@ -44,7 +44,7 @@ struct CIO2Device {
 
     auto init(Entity* csi2) -> bool;
     auto init(std::string_view entity_name) -> bool;
-    auto get_formats() const -> std::vector<Format>;
+    auto get_formats() const -> std::optional<std::vector<Format>>;
 
     CIO2Device(MediaDevice* const media)
         : media(media) {}

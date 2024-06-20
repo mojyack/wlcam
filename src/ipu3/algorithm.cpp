@@ -146,8 +146,8 @@ auto calculate_fov(const Size input, const PipeConfig& config) -> FOV {
     };
 }
 
-auto calculate_pipeline_config(const Size input, const Size output, const Size viewfinder) -> PipeConfig {
-    DYN_ASSERT(input.width >= IF_CROP_MAX_W && input.height >= IF_CROP_MAX_H, "not supported");
+auto calculate_pipeline_config(const Size input, const Size output, const Size viewfinder) -> std::optional<PipeConfig> {
+    assert_o(input.width >= IF_CROP_MAX_W && input.height >= IF_CROP_MAX_H, "not supported");
 
     auto pipeconfigs = std::vector<PipeConfig>();
 
@@ -183,7 +183,7 @@ auto calculate_pipeline_config(const Size input, const Size output, const Size v
         if_h -= IF_ALIGN_H;
     }
 
-    DYN_ASSERT(!pipeconfigs.empty(), "no configs found");
+    assert_o(!pipeconfigs.empty(), "no configs found");
 
     auto best_fov   = calculate_fov(input, pipeconfigs[0]);
     auto best_index = 0u;

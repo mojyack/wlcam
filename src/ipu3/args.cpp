@@ -1,6 +1,6 @@
 #include <string_view>
 
-#include "../macros/assert.hpp"
+#include "../macros/unwrap.hpp"
 #include "../util/assert.hpp"
 #include "../util/charconv.hpp"
 #include "args.hpp"
@@ -22,22 +22,15 @@ options:
   --width  WIDTH               horizontal resolution
   --height HEIGHT vertical     resolution
 )str";
-
-template <class T>
-auto parse(const std::string_view str) -> T {
-    const auto o = from_chars<T>(str);
-    DYN_ASSERT(o.has_value(), "not a number: ", str);
-    return o.value();
-}
 } // namespace
 
 namespace ipu3 {
-auto parse_args(const int argc, const char* const argv[]) -> Args {
+auto parse_args(const int argc, const char* const argv[]) -> std::optional<Args> {
     auto args = Args();
 
-    const auto increment = [argc](int& i) -> void {
+    const auto increment = [argc](int& i) -> bool {
         i += 1;
-        DYN_ASSERT(i < argc, "no following argument");
+        return i < argc;
     };
 
     for(auto i = 1; i < argc; i += 1) {
@@ -46,51 +39,55 @@ auto parse_args(const int argc, const char* const argv[]) -> Args {
             print(help);
             exit(0);
         } else if(arg == "-s" || arg == "--server") {
-            increment(i);
+            assert_o(increment(i));
             args.event_fifo = argv[i];
         } else if(arg == "-o" || arg == "--output") {
-            increment(i);
+            assert_o(increment(i));
             args.savedir = argv[i];
         } else if(arg == "--cio2") {
-            increment(i);
+            assert_o(increment(i));
             args.cio2_devnode = argv[i];
         } else if(arg == "--imgu") {
-            increment(i);
+            assert_o(increment(i));
             args.imgu_devnode = argv[i];
         } else if(arg == "--cio2-entity") {
-            increment(i);
+            assert_o(increment(i));
             args.cio2_entity = argv[i];
         } else if(arg == "--imgu-entity") {
-            increment(i);
+            assert_o(increment(i));
             args.imgu_entity = argv[i];
         } else if(arg == "--sensor-mbus-code") {
-            increment(i);
-            args.sensor_mbus_code = parse<int>(argv[i]);
+            assert_o(increment(i));
+            unwrap_oo(num, from_chars<int>(argv[i]));
+            args.sensor_mbus_code = num;
         } else if(arg == "--sensor-width") {
-            increment(i);
-            args.sensor_width = parse<int>(argv[i]);
+            assert_o(increment(i));
+            unwrap_oo(num, from_chars<int>(argv[i]));
+            args.sensor_width = num;
         } else if(arg == "--sensor-height") {
-            increment(i);
-            args.sensor_height = parse<int>(argv[i]);
+            assert_o(increment(i));
+            unwrap_oo(num, from_chars<int>(argv[i]));
+            args.sensor_height = num;
         } else if(arg == "--width") {
-            increment(i);
-            args.width = parse<int>(argv[i]);
+            assert_o(increment(i));
+            unwrap_oo(num, from_chars<int>(argv[i]));
+            args.width = num;
         } else if(arg == "--height") {
-            increment(i);
-            args.height = parse<int>(argv[i]);
+            unwrap_oo(num, from_chars<int>(argv[i]));
+            args.height = num;
         }
     }
 
-    DYN_ASSERT(args.savedir != nullptr, "no --output argument");
-    DYN_ASSERT(args.cio2_devnode != nullptr, "no --cio2 argument");
-    DYN_ASSERT(args.imgu_devnode != nullptr, "no --imgu argument");
-    DYN_ASSERT(args.cio2_entity != nullptr, "no --cio2-entity argument");
-    DYN_ASSERT(args.imgu_entity != nullptr, "no --imgu-entity argument");
-    DYN_ASSERT(args.sensor_mbus_code != 0, "no --sensor-mbus-code argument");
-    DYN_ASSERT(args.sensor_width != 0, "no --sensor-width argument");
-    DYN_ASSERT(args.sensor_height != 0, "no --sensor-height argument");
-    DYN_ASSERT(args.width != 0, "no --width argument");
-    DYN_ASSERT(args.height != 0, "no --height argument");
+    assert_o(args.savedir != nullptr, "no --output argument");
+    assert_o(args.cio2_devnode != nullptr, "no --cio2 argument");
+    assert_o(args.imgu_devnode != nullptr, "no --imgu argument");
+    assert_o(args.cio2_entity != nullptr, "no --cio2-entity argument");
+    assert_o(args.imgu_entity != nullptr, "no --imgu-entity argument");
+    assert_o(args.sensor_mbus_code != 0, "no --sensor-mbus-code argument");
+    assert_o(args.sensor_width != 0, "no --sensor-width argument");
+    assert_o(args.sensor_height != 0, "no --sensor-height argument");
+    assert_o(args.width != 0, "no --width argument");
+    assert_o(args.height != 0, "no --height argument");
 
     return args;
 }

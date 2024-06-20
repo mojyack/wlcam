@@ -95,7 +95,7 @@ auto run() -> bool {
     auto cio2 = ipu3::cio2::CIO2Device(&csi2_device);
     cio2.init(const_cast<Entity*>(csi2_entity));
 
-    const auto sensor_formats = cio2.get_formats();
+    unwrap_ob(sensor_formats, cio2.get_formats());
     print("the sensor suppors ", sensor_formats.size(), " formats");
     for(auto i = 0u; i < sensor_formats.size(); i += 1) {
         print("  ", i, " ", sensor_formats[i].code);

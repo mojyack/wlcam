@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 
 namespace ipu3 {
 struct Args {
@@ -15,5 +16,5 @@ struct Args {
     int         height           = 0;
 };
 
-auto parse_args(int argc, const char* const argv[]) -> Args;
+auto parse_args(int argc, const char* const argv[]) -> std::optional<Args>;
 } // namespace ipu3
