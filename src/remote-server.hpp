@@ -1,4 +1,6 @@
 #pragma once
+#include <string>
+
 #include "util/variant.hpp"
 
 namespace RemoteEvents {

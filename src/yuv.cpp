@@ -1,5 +1,4 @@
 #include "yuv.hpp"
-#include "assert.hpp"
 
 namespace yuv {
 auto yuv422i_to_yuv422p(const std::byte* const yuv, const uint32_t width, const uint32_t height, const uint32_t stride) -> std::array<std::vector<std::byte>, 3> {

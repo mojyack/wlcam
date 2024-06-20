@@ -1,9 +1,24 @@
-#include "../assert.hpp"
 #include "../file.hpp"
+#include "../gawl/wayland/application.hpp"
+#include "../macros/assert.hpp"
+#include "../util/assert.hpp"
 #include "../v4l2.hpp"
 #include "../window.hpp"
 #include "args.hpp"
 #include "camera.hpp"
+
+class SimpleWindowCallbacks : public WindowCallbacks {
+  public:
+    Camera* cam;
+
+    auto close() -> void override {
+        cam->shutdown();
+        application->quit();
+    }
+
+    SimpleWindowCallbacks(Context& context)
+        : WindowCallbacks(context) {}
+};
 
 auto main(const int argc, const char* const argv[]) -> int {
     const auto args = parse_args(argc, argv);
@@ -36,32 +51,33 @@ auto main(const int argc, const char* const argv[]) -> int {
     auto       context      = Context();
     auto       event_fifo   = args.event_fifo != nullptr ? RemoteServer(args.event_fifo) : RemoteServer();
 
-    auto  app    = gawl::Application();
-    auto& window = app.open_window<Window>({}, context, args.movie).get_window();
+    auto       callbacks = std::shared_ptr<SimpleWindowCallbacks>(new SimpleWindowCallbacks(context));
+    auto       app       = gawl::WaylandApplication();
+    const auto window    = app.open_window({.title = "wlcam"}, callbacks);
+    const auto wlwindow  = std::bit_cast<gawl::WaylandWindow*>(window);
 
     switch(args.pixel_format) {
     case v4l2::fourcc("MJPG"):
-        init_planar_graphic_globject();
+        init_planar_shader();
         break;
         V4L2_PIX_FMT_YUV420;
     case v4l2::fourcc("YUYV"):
-        init_yuv422i_graphic_globject();
+        init_yuv422i_shader();
         break;
     case v4l2::fourcc("NV12"):
-        init_yuv420sp_graphic_globject();
+        init_yuv420sp_shader();
         break;
     default:
         PANIC("unsupported pixel format");
     }
 
     const auto fmt    = v4l2::get_current_format(fd);
-    auto       camera = Camera(fd, buffers.data(), fmt.width, fmt.height, args.fps, window, file_manager, context, event_fifo);
+    auto       camera = Camera(fd, buffers.data(), fmt.width, fmt.height, args.fps, *wlwindow, file_manager, context, args.event_fifo ? &event_fifo : nullptr);
+    callbacks->cam    = &camera;
 
-    auto camera_worker = std::thread([&camera] { camera.run(); });
+    camera.run();
     app.run();
-
-    camera.finish_thread();
-    camera_worker.join();
+    camera.shutdown();
 
     return 0;
 }

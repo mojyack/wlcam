@@ -2,8 +2,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "assert.hpp"
+#include "macros/assert.hpp"
 #include "remote-server.hpp"
+#include "util/assert.hpp"
 
 namespace {
 template <size_t n>

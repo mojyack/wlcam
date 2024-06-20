@@ -4,8 +4,9 @@
 #include <sys/sysmacros.h>
 #include <unistd.h>
 
-#include "assert.hpp"
+#include "macros/assert.hpp"
 #include "media-device.hpp"
+#include "util/assert.hpp"
 
 namespace {
 auto find_interface(const media_v2_topology& topology, const uint32_t entity_id) -> Interface {

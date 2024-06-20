@@ -1,3 +1,6 @@
+#include "yuv422i.hpp"
+
+namespace {
 auto yuv422i_fragment_shader_source = R"glsl(
     #version 330 core
     in vec2           tex_coordinate;
@@ -24,3 +27,26 @@ auto yuv422i_fragment_shader_source = R"glsl(
         color = vec4(r, g, b, 1.0);
     }
 )glsl";
+
+auto shader = (gawl::impl::GraphicShader*)(nullptr);
+} // namespace
+
+auto init_yuv422i_shader() -> void {
+    shader = new gawl::impl::GraphicShader(gawl::impl::graphic_vertex_shader_source, yuv422i_fragment_shader_source);
+}
+
+auto YUV422iGraphic::update_texture(const int width, const int height, const int stride, const std::byte* const yuv) -> void {
+    const auto txbinder = this->bind_texture();
+    this->width         = width;
+    this->height        = height;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 2);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, stride == 0 ? width : stride / 2);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG, this->width, this->height, 0, GL_RG, GL_UNSIGNED_BYTE, yuv);
+}
+
+YUV422iGraphic::YUV422iGraphic(const int width, const int height, const int stride, const std::byte* const yuv)
+    : GraphicBase(*::shader) {
+    update_texture(width, height, stride, yuv);
+}

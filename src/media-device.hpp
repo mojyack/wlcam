@@ -41,15 +41,10 @@ struct MediaDevice {
     int                 fd;
 
     auto find_entity_by_id(uint32_t id) -> Entity*;
-
     auto find_entity_by_name(std::string_view name) -> Entity*;
-
     auto find_pad_owner_and_index(uint32_t pad_id) const -> std::tuple<const Entity*, size_t>;
-
     auto configure_link(Link& link, bool enable) -> void;
-
     auto disable_all_links() -> void;
-
     auto debug_print() const -> void;
 };
 

@@ -2,7 +2,8 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include "assert.hpp"
+#include "macros/assert.hpp"
+#include "util/assert.hpp"
 #include "v4l2.hpp"
 
 // #include "ioctl-debug.hpp"
@@ -10,9 +11,9 @@
 namespace {
 template <class... Args>
 auto xioctl(const int fd, const uint64_t request, Args&&... args) -> int {
-    int r;
+    auto r = 0;
     do {
-        //        r = iocd::ioctl(stdout, fd, request, std::forward<Args>(args)...);
+        // r = iocd::ioctl(stdout, fd, request, std::forward<Args>(args)...);
         r = ioctl(fd, request, std::forward<Args>(args)...);
     } while(r == -1 && errno == EINTR);
     return r;
@@ -258,7 +259,7 @@ auto queue_buffer_mp(const int fd, const v4l2_buf_type buffer_type, const v4l2_m
     buf.field    = V4L2_FIELD_NONE;
     buf.m.planes = planes.data();
     for(auto i = 0u; i < dma_buffers_size; i += 1) {
-        planes[i].m.fd   = dma_buffers[i].fd;
+        planes[i].m.fd   = dma_buffers[i].fd.as_handle();
         planes[i].length = dma_buffers[i].length;
     }
 

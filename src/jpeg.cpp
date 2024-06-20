@@ -1,12 +1,12 @@
 #include <array>
 #include <vector>
 
-#include <gawl/pixelbuffer.hpp>
 #include <stdio.h>
 #include <turbojpeg.h>
 
-#include "../assert.hpp"
 #include "jpeg.hpp"
+#include "macros/assert.hpp"
+#include "util/assert.hpp"
 
 namespace {
 // pixel per chrominance
@@ -14,10 +14,8 @@ auto tjsample_to_ppc(const int sample) -> std::array<int, 2> {
     switch(sample) {
     case TJSAMP_422:
         return {2, 1};
-        break;
     case TJSAMP_420:
         return {2, 2};
-        break;
     default:
         PANIC("unsupported sampling type ", sample);
     }
@@ -38,7 +36,7 @@ auto ppc_to_tjsample(const int ppc_x, const int ppc_y) -> int {
 } // namespace
 
 namespace jpg {
-auto TJDeleter::operator()(unsigned char* buf) -> void {
+auto TJDeleter::operator()(unsigned char* const buf) -> void {
     tjFree(buf);
 }
 

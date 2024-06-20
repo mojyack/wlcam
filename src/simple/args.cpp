@@ -1,7 +1,8 @@
 #include <string_view>
 
+#include "../macros/assert.hpp"
+#include "../util/assert.hpp"
 #include "../util/charconv.hpp"
-#include "../util/error.hpp"
 #include "args.hpp"
 
 namespace {
@@ -35,11 +36,8 @@ auto parse_args(const int argc, const char* const argv[]) -> Args {
     auto args = Args();
 
     const auto increment = [argc](int& i) -> void {
-        if(i + 1 >= argc) {
-            printf("no following argument\n");
-            exit(1);
-        }
         i += 1;
+        DYN_ASSERT(i < argc, "no following argument");
     };
 
     for(auto i = 1; i < argc; i += 1) {
@@ -71,10 +69,7 @@ auto parse_args(const int argc, const char* const argv[]) -> Args {
             args.fps = parse<int>(argv[i]);
         } else if(arg == "--pix-format") {
             increment(i);
-            if(strlen(argv[i]) != 4) {
-                print("invalid pixel format");
-                exit(1);
-            }
+            DYN_ASSERT(strlen(argv[i]) == 4, "invalid pixel format");
             args.pixel_format = v4l2::fourcc(argv[i]);
         }
     }

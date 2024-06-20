@@ -1,7 +1,8 @@
 #include <libudev.h>
 
-#include "assert.hpp"
+#include "macros/assert.hpp"
 #include "udev.hpp"
+#include "util/assert.hpp"
 
 namespace dev {
 auto enumerate() -> std::unordered_map<dev_t, std::string> {
