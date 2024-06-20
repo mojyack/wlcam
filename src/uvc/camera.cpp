@@ -73,10 +73,10 @@ auto Camera::worker_main() -> bool {
         event_fifo->send_event(RemoteEvents::Configure{.fps = int(fps)});
     }
 
-    const auto fmt            = v4l2::get_current_format(fd);
-    auto       window_context = window->fork_context();
-    auto       ubuf           = (std::byte*)(nullptr);
-    auto       vbuf           = (std::byte*)(nullptr);
+    unwrap_ob(fmt, v4l2::get_current_format(fd));
+    auto window_context = window->fork_context();
+    auto ubuf           = (std::byte*)(nullptr);
+    auto vbuf           = (std::byte*)(nullptr);
     if(fmt.pixelformat == v4l2::fourcc("NV12")) {
         ubuf = new std::byte[height / 4 * width];
         vbuf = new std::byte[height / 4 * width];
@@ -90,7 +90,7 @@ loop:
         return true;
     }
     DYN_ASSERT(poll(fds.data(), 1, 0) != -1);
-    const auto index = v4l2::dequeue_buffer(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE);
+    unwrap_ob(index, v4l2::dequeue_buffer(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE));
 
     // if recording, save elapsed time
     if(record_context) {
@@ -186,7 +186,7 @@ loop:
     } break;
     }
 
-    v4l2::queue_buffer(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, index);
+    assert_b(v4l2::queue_buffer(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, index));
 
     window_context.flush();
     std::swap(context->critical_graphic, img);

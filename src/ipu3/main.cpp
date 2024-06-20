@@ -31,7 +31,7 @@ class IPU3WindowCallbacks : public WindowCallbacks {
         : WindowCallbacks(context) {}
 };
 
-auto main(const int argc, const char* const argv[]) -> int {
+auto run(const int argc, const char* const argv[]) -> int {
     const auto args = ipu3::parse_args(argc, argv);
 
     const auto node_map    = dev::enumerate();
@@ -57,9 +57,9 @@ auto main(const int argc, const char* const argv[]) -> int {
     const auto cio2_fd        = cio2_0.cio2.as_handle();
     const auto cio2_sensor_fd = cio2_0.sensor.fd.as_handle();
     const auto cio2_output_fd = cio2_0.output.as_handle();
-    v4l2::set_format_subdev(cio2_sensor_fd, cio2_0.sensor.pad_index, args.sensor_mbus_code, args.sensor_width, args.sensor_height);
-    v4l2::set_format_subdev(cio2_fd, 0, args.sensor_mbus_code, args.sensor_width, args.sensor_height);
-    const auto cio_output_fmt = v4l2::set_format_mp(cio2_output_fd, outbuf_mp, imgu_input_format, 1, args.sensor_width, args.sensor_height, nullptr);
+    assert_b(v4l2::set_format_subdev(cio2_sensor_fd, cio2_0.sensor.pad_index, args.sensor_mbus_code, args.sensor_width, args.sensor_height));
+    assert_b(v4l2::set_format_subdev(cio2_fd, 0, args.sensor_mbus_code, args.sensor_width, args.sensor_height));
+    unwrap_ob(cio_output_fmt, v4l2::set_format_mp(cio2_output_fd, outbuf_mp, imgu_input_format, 1, args.sensor_width, args.sensor_height, nullptr));
 
     const auto output          = algo::align_size({args.width, args.height});
     const auto viewfinder      = algo::calculate_best_viewfinder(output, {1920, 1280}); // TODO: reflect window size
@@ -73,50 +73,51 @@ auto main(const int argc, const char* const argv[]) -> int {
     const auto imgu_param_fd  = imgu_0.parameters.as_handle();
     const auto imgu_stat_fd   = imgu_0.stat.as_handle();
     const auto plane_fmts     = cio_output_fmt.fmt.pix_mp.plane_fmt;
-    v4l2::set_format_mp(imgu_input_fd, outbuf_mp, imgu_input_format, 1, args.sensor_width, args.sensor_height, plane_fmts);
-    v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_input_pad_index, MEDIA_BUS_FMT_FIXED, pipeline_config.gdc.width, pipeline_config.gdc.height);
-    v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_parameters_pad_index, MEDIA_BUS_FMT_FIXED, output.width, output.height);
-    v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_stat_pad_index, MEDIA_BUS_FMT_FIXED, output.width, output.height);
-    v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_output_pad_index, MEDIA_BUS_FMT_FIXED, output.width, output.height);
-    const auto imgu_output_fmt = v4l2::set_format_mp(imgu_output_fd, capbuf_mp, V4L2_PIX_FMT_NV12, 2, output.width, output.height, nullptr);
-    v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_viewfinder_pad_index, MEDIA_BUS_FMT_FIXED, output.width, output.height);
-    const auto imgu_vf_fmt = v4l2::set_format_mp(imgu_vf_fd, capbuf_mp, V4L2_PIX_FMT_NV12, 2, output.width, output.height, nullptr);
+    assert_b(v4l2::set_format_mp(imgu_input_fd, outbuf_mp, imgu_input_format, 1, args.sensor_width, args.sensor_height, plane_fmts));
+    assert_b(v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_input_pad_index, MEDIA_BUS_FMT_FIXED, pipeline_config.gdc.width, pipeline_config.gdc.height));
+    assert_b(v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_parameters_pad_index, MEDIA_BUS_FMT_FIXED, output.width, output.height));
+    assert_b(v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_stat_pad_index, MEDIA_BUS_FMT_FIXED, output.width, output.height));
+    assert_b(v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_output_pad_index, MEDIA_BUS_FMT_FIXED, output.width, output.height));
+    unwrap_ob(imgu_output_fmt, v4l2::set_format_mp(imgu_output_fd, capbuf_mp, V4L2_PIX_FMT_NV12, 2, output.width, output.height, nullptr));
+    assert_b(v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_viewfinder_pad_index, MEDIA_BUS_FMT_FIXED, output.width, output.height));
+    unwrap_ob(imgu_vf_fmt, v4l2::set_format_mp(imgu_vf_fd, capbuf_mp, V4L2_PIX_FMT_NV12, 2, output.width, output.height, nullptr));
 
     const auto& iif = pipeline_config.iif;
     const auto& bds = pipeline_config.bds;
-    v4l2::set_selection_subdev(imgu_fd, imgu_0.imgu_input_pad_index, V4L2_SEL_TGT_CROP, 0, 0, iif.width, iif.height);
-    v4l2::set_selection_subdev(imgu_fd, imgu_0.imgu_input_pad_index, V4L2_SEL_TGT_COMPOSE, 0, 0, bds.width, bds.height);
+    assert_b(v4l2::set_selection_subdev(imgu_fd, imgu_0.imgu_input_pad_index, V4L2_SEL_TGT_CROP, 0, 0, iif.width, iif.height));
+    assert_b(v4l2::set_selection_subdev(imgu_fd, imgu_0.imgu_input_pad_index, V4L2_SEL_TGT_COMPOSE, 0, 0, bds.width, bds.height));
 
-    v4l2::request_buffers(imgu_input_fd, outbuf_mp, V4L2_MEMORY_DMABUF, num_buffers);
-    const auto imgu_parameters_req    = v4l2::request_buffers(imgu_param_fd, outbuf_meta, V4L2_MEMORY_MMAP, num_buffers);
-    const auto imgu_parameter_buffers = v4l2::query_and_export_buffers(imgu_param_fd, outbuf_meta, imgu_parameters_req);
-    const auto imgu_stat_req          = v4l2::request_buffers(imgu_stat_fd, capbuf_meta, V4L2_MEMORY_MMAP, num_buffers);
-    const auto imgu_stat_buffers      = v4l2::query_and_export_buffers(imgu_stat_fd, capbuf_meta, imgu_stat_req);
+    assert_b(v4l2::request_buffers(imgu_input_fd, outbuf_mp, V4L2_MEMORY_DMABUF, num_buffers));
+    unwrap_ob(imgu_parameters_req, v4l2::request_buffers(imgu_param_fd, outbuf_meta, V4L2_MEMORY_MMAP, num_buffers));
+    unwrap_ob(imgu_parameter_buffers, v4l2::query_and_export_buffers(imgu_param_fd, outbuf_meta, imgu_parameters_req));
+    unwrap_ob(imgu_stat_req, v4l2::request_buffers(imgu_stat_fd, capbuf_meta, V4L2_MEMORY_MMAP, num_buffers));
+    unwrap_ob(imgu_stat_buffers, v4l2::query_and_export_buffers(imgu_stat_fd, capbuf_meta, imgu_stat_req));
+    (void)imgu_stat_buffers; // status feedback is not implemented
 
-    const auto imgu_output_req     = v4l2::request_buffers(imgu_output_fd, capbuf_mp, V4L2_MEMORY_MMAP, num_buffers);
-    const auto imgu_output_buffers = v4l2::query_and_export_buffers_mp(imgu_output_fd, capbuf_mp, imgu_output_req);
-    v4l2::request_buffers(imgu_output_fd, capbuf_mp, V4L2_MEMORY_MMAP, 0);
-    v4l2::request_buffers(imgu_output_fd, capbuf_mp, V4L2_MEMORY_DMABUF, num_buffers);
+    unwrap_ob(imgu_output_req, v4l2::request_buffers(imgu_output_fd, capbuf_mp, V4L2_MEMORY_MMAP, num_buffers));
+    unwrap_ob(imgu_output_buffers, v4l2::query_and_export_buffers_mp(imgu_output_fd, capbuf_mp, imgu_output_req));
+    assert_b(v4l2::request_buffers(imgu_output_fd, capbuf_mp, V4L2_MEMORY_MMAP, 0));
+    assert_b(v4l2::request_buffers(imgu_output_fd, capbuf_mp, V4L2_MEMORY_DMABUF, num_buffers));
 
-    const auto imgu_vf_req     = v4l2::request_buffers(imgu_vf_fd, capbuf_mp, V4L2_MEMORY_MMAP, num_buffers);
-    const auto imgu_vf_buffers = v4l2::query_and_export_buffers_mp(imgu_vf_fd, capbuf_mp, imgu_vf_req);
-    v4l2::request_buffers(imgu_vf_fd, capbuf_mp, V4L2_MEMORY_MMAP, 0);
-    v4l2::request_buffers(imgu_vf_fd, capbuf_mp, V4L2_MEMORY_DMABUF, num_buffers);
+    unwrap_ob(imgu_vf_req, v4l2::request_buffers(imgu_vf_fd, capbuf_mp, V4L2_MEMORY_MMAP, num_buffers));
+    unwrap_ob(imgu_vf_buffers, v4l2::query_and_export_buffers_mp(imgu_vf_fd, capbuf_mp, imgu_vf_req));
+    assert_b(v4l2::request_buffers(imgu_vf_fd, capbuf_mp, V4L2_MEMORY_MMAP, 0));
+    assert_b(v4l2::request_buffers(imgu_vf_fd, capbuf_mp, V4L2_MEMORY_DMABUF, num_buffers));
 
-    const auto cio2_output_req     = v4l2::request_buffers(cio2_output_fd, capbuf_mp, V4L2_MEMORY_MMAP, num_buffers);
-    const auto cio2_output_buffers = v4l2::query_and_export_buffers_mp(cio2_output_fd, capbuf_mp, cio2_output_req);
-    v4l2::request_buffers(cio2_output_fd, capbuf_mp, V4L2_MEMORY_MMAP, 0);
-    v4l2::request_buffers(cio2_output_fd, capbuf_mp, V4L2_MEMORY_DMABUF, num_buffers);
+    unwrap_ob(cio2_output_req, v4l2::request_buffers(cio2_output_fd, capbuf_mp, V4L2_MEMORY_MMAP, num_buffers));
+    unwrap_ob(cio2_output_buffers, v4l2::query_and_export_buffers_mp(cio2_output_fd, capbuf_mp, cio2_output_req));
+    assert_b(v4l2::request_buffers(cio2_output_fd, capbuf_mp, V4L2_MEMORY_MMAP, 0));
+    assert_b(v4l2::request_buffers(cio2_output_fd, capbuf_mp, V4L2_MEMORY_DMABUF, num_buffers));
 
-    v4l2::start_stream(cio2_output_fd, capbuf_mp);
-    v4l2::start_stream(imgu_output_fd, capbuf_mp);
-    v4l2::start_stream(imgu_vf_fd, capbuf_mp);
-    v4l2::start_stream(imgu_param_fd, outbuf_meta);
-    v4l2::start_stream(imgu_stat_fd, capbuf_meta);
-    v4l2::start_stream(imgu_input_fd, outbuf_mp);
+    assert_b(v4l2::start_stream(cio2_output_fd, capbuf_mp));
+    assert_b(v4l2::start_stream(imgu_output_fd, capbuf_mp));
+    assert_b(v4l2::start_stream(imgu_vf_fd, capbuf_mp));
+    assert_b(v4l2::start_stream(imgu_param_fd, outbuf_meta));
+    assert_b(v4l2::start_stream(imgu_stat_fd, capbuf_meta));
+    assert_b(v4l2::start_stream(imgu_input_fd, outbuf_mp));
 
     for(auto i = 0; i < num_buffers; i += 1) {
-        v4l2::queue_buffer_mp(cio2_output_fd, capbuf_mp, V4L2_MEMORY_DMABUF, i, &cio2_output_buffers[i], 1);
+        assert_b(v4l2::queue_buffer_mp(cio2_output_fd, capbuf_mp, V4L2_MEMORY_DMABUF, i, &cio2_output_buffers[i], 1));
     }
 
     auto output_mmap_ptrs = std::array<void*, num_buffers>();
@@ -184,19 +185,19 @@ auto main(const int argc, const char* const argv[]) -> int {
         }
 
         while(!finish_camera_thread) {
-            const auto i = v4l2::dequeue_buffer_mp(cio2_output_fd, capbuf_mp, V4L2_MEMORY_DMABUF);
+            unwrap_ob(i, v4l2::dequeue_buffer_mp(cio2_output_fd, capbuf_mp, V4L2_MEMORY_DMABUF));
 
-            v4l2::queue_buffer_mp(imgu_output_fd, capbuf_mp, V4L2_MEMORY_DMABUF, i, &imgu_output_buffers[i], 1);
-            v4l2::queue_buffer_mp(imgu_vf_fd, capbuf_mp, V4L2_MEMORY_DMABUF, i, &imgu_vf_buffers[i], 1);
-            v4l2::queue_buffer(imgu_param_fd, outbuf_meta, i);
-            v4l2::queue_buffer(imgu_stat_fd, capbuf_meta, i);
-            v4l2::queue_buffer_mp(imgu_input_fd, outbuf_mp, V4L2_MEMORY_DMABUF, i, &cio2_output_buffers[i], 1);
+            assert_b(v4l2::queue_buffer_mp(imgu_output_fd, capbuf_mp, V4L2_MEMORY_DMABUF, i, &imgu_output_buffers[i], 1));
+            assert_b(v4l2::queue_buffer_mp(imgu_vf_fd, capbuf_mp, V4L2_MEMORY_DMABUF, i, &imgu_vf_buffers[i], 1));
+            assert_b(v4l2::queue_buffer(imgu_param_fd, outbuf_meta, i));
+            assert_b(v4l2::queue_buffer(imgu_stat_fd, capbuf_meta, i));
+            assert_b(v4l2::queue_buffer_mp(imgu_input_fd, outbuf_mp, V4L2_MEMORY_DMABUF, i, &cio2_output_buffers[i], 1));
 
-            v4l2::dequeue_buffer_mp(imgu_output_fd, capbuf_mp, V4L2_MEMORY_DMABUF);
-            v4l2::dequeue_buffer_mp(imgu_vf_fd, capbuf_mp, V4L2_MEMORY_DMABUF);
-            v4l2::dequeue_buffer(imgu_param_fd, outbuf_meta);
-            v4l2::dequeue_buffer(imgu_stat_fd, capbuf_meta);
-            v4l2::dequeue_buffer_mp(imgu_input_fd, outbuf_mp, V4L2_MEMORY_DMABUF);
+            assert_b(v4l2::dequeue_buffer_mp(imgu_output_fd, capbuf_mp, V4L2_MEMORY_DMABUF));
+            assert_b(v4l2::dequeue_buffer_mp(imgu_vf_fd, capbuf_mp, V4L2_MEMORY_DMABUF));
+            assert_b(v4l2::dequeue_buffer(imgu_param_fd, outbuf_meta));
+            assert_b(v4l2::dequeue_buffer(imgu_stat_fd, capbuf_meta));
+            assert_b(v4l2::dequeue_buffer_mp(imgu_input_fd, outbuf_mp, V4L2_MEMORY_DMABUF));
 
             const auto vf_buf = std::bit_cast<std::byte*>(vf_mmap_ptrs[i]);
             auto       img    = std::shared_ptr<GraphicLike>(new GraphicLike(Tag<YUV420spGraphic>(), vf_width, vf_height, vf_stride, vf_buf, vf_buf + vf_stride * vf_height));
@@ -210,7 +211,7 @@ auto main(const int argc, const char* const argv[]) -> int {
                 yuv::yuv420sp_uvsp_to_uvp(uvbuf, ubuf.data(), vbuf.data(), output_width, output_height, output_stride);
 
                 unwrap_ob(jpeg, jpg::encode_yuvp_to_jpeg(output_width, output_height, output_stride, 2, 2, buf, ubuf.data(), vbuf.data()));
-                const auto fd                  = FileDescriptor(open(path.c_str(), O_RDWR | O_CREAT, 0644));
+                const auto fd = FileDescriptor(open(path.c_str(), O_RDWR | O_CREAT, 0644));
                 assert_b(fd.as_handle() >= 0);
                 assert_b(write(fd.as_handle(), jpeg.buffer.get(), jpeg.size) == ssize_t(jpeg.size));
 
@@ -223,7 +224,7 @@ auto main(const int argc, const char* const argv[]) -> int {
             window_context.flush();
             std::swap(context.critical_graphic, img);
 
-            v4l2::queue_buffer_mp(cio2_output_fd, capbuf_mp, V4L2_MEMORY_DMABUF, i, &cio2_output_buffers[i], 1);
+            assert_b(v4l2::queue_buffer_mp(cio2_output_fd, capbuf_mp, V4L2_MEMORY_DMABUF, i, &cio2_output_buffers[i], 1));
         }
 
         event_fifo.send_event(RemoteEvents::Bye{});
@@ -237,4 +238,8 @@ auto main(const int argc, const char* const argv[]) -> int {
     std::quick_exit(0);
 
     return 0;
+}
+
+auto main(const int argc, const char* const argv[]) -> int {
+    return run(argc, argv) ? 0 : 1;
 }

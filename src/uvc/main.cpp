@@ -1,6 +1,6 @@
 #include "../file.hpp"
 #include "../gawl/wayland/application.hpp"
-#include "../macros/assert.hpp"
+#include "../macros/unwrap.hpp"
 #include "../util/assert.hpp"
 #include "../v4l2.hpp"
 #include "../window.hpp"
@@ -20,27 +20,28 @@ class UVCWindowCallbacks : public WindowCallbacks {
         : WindowCallbacks(context) {}
 };
 
-auto main(const int argc, const char* const argv[]) -> int {
+auto run(const int argc, const char* const argv[]) -> bool {
     const auto args = parse_args(argc, argv);
 
     const int fd = open(args.video_device, O_RDWR);
     DYN_ASSERT(fd != -1);
-    DYN_ASSERT(v4l2::is_capture_device(fd), "not a capture device");
+    unwrap_ob(is_capture_device, v4l2::is_capture_device(fd));
+    assert_b(is_capture_device, "not a capture device");
 
     if(args.list_formats) {
         v4l2::list_formats(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, 0);
         return 0;
     }
 
-    v4l2::set_format(fd, args.pixel_format, args.width, args.height);
-    v4l2::set_interval(fd, 1, args.fps);
+    assert_b(v4l2::set_format(fd, args.pixel_format, args.width, args.height));
+    assert_b(v4l2::set_interval(fd, 1, args.fps));
 
-    const auto req     = v4l2::request_buffers(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, V4L2_MEMORY_MMAP, num_buffers);
-    auto       buffers = v4l2::map_buffers(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, req);
+    unwrap_ob(req, v4l2::request_buffers(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, V4L2_MEMORY_MMAP, num_buffers));
+    unwrap_ob_mut(buffers, v4l2::map_buffers(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, req));
     for(auto i = 0; i < num_buffers; i += 1) {
-        v4l2::queue_buffer(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, i);
+        assert_b(v4l2::queue_buffer(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, i));
     }
-    v4l2::start_stream(fd);
+    assert_b(v4l2::start_stream(fd));
 
     const auto file_manager = FileManager(args.savedir);
     auto       context      = Context();
@@ -66,13 +67,17 @@ auto main(const int argc, const char* const argv[]) -> int {
         PANIC("unsupported pixel format");
     }
 
-    const auto fmt    = v4l2::get_current_format(fd);
-    auto       camera = Camera(fd, buffers.data(), fmt.width, fmt.height, args.fps, *wlwindow, file_manager, context, args.event_fifo ? &event_fifo : nullptr);
-    callbacks->cam    = &camera;
+    unwrap_ob(fmt, v4l2::get_current_format(fd));
+    auto camera    = Camera(fd, buffers.data(), fmt.width, fmt.height, args.fps, *wlwindow, file_manager, context, args.event_fifo ? &event_fifo : nullptr);
+    callbacks->cam = &camera;
 
     camera.run();
     app.run();
     camera.shutdown();
 
     return 0;
+}
+
+auto main(const int argc, const char* const argv[]) -> int {
+    return run(argc, argv) ? 0 : 1;
 }
