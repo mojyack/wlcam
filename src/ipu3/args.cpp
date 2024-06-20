@@ -1,7 +1,8 @@
 #include <string_view>
 
+#include "../macros/assert.hpp"
+#include "../util/assert.hpp"
 #include "../util/charconv.hpp"
-#include "../util/error.hpp"
 #include "args.hpp"
 
 namespace {
@@ -25,10 +26,7 @@ options:
 template <class T>
 auto parse(const std::string_view str) -> T {
     const auto o = from_chars<T>(str);
-    if(!o) {
-        print("not a number: ", str);
-        exit(1);
-    }
+    DYN_ASSERT(o.has_value(), "not a number: ", str);
     return o.value();
 }
 } // namespace
@@ -38,11 +36,8 @@ auto parse_args(const int argc, const char* const argv[]) -> Args {
     auto args = Args();
 
     const auto increment = [argc](int& i) -> void {
-        if(i + 1 >= argc) {
-            printf("no following argument\n");
-            exit(1);
-        }
         i += 1;
+        DYN_ASSERT(i < argc, "no following argument");
     };
 
     for(auto i = 1; i < argc; i += 1) {
@@ -86,46 +81,17 @@ auto parse_args(const int argc, const char* const argv[]) -> Args {
         }
     }
 
-    if(args.savedir == nullptr) {
-        print("no --output argument");
-        exit(0);
-    }
-    if(args.cio2_devnode == nullptr) {
-        print("no --cio2 argument");
-        exit(0);
-    }
-    if(args.imgu_devnode == nullptr) {
-        print("no --imgu argument");
-        exit(0);
-    }
-    if(args.cio2_entity == nullptr) {
-        print("no --cio2-entity argument");
-        exit(0);
-    }
-    if(args.imgu_entity == nullptr) {
-        print("no --imgu-entity argument");
-        exit(0);
-    }
-    if(args.sensor_mbus_code == 0) {
-        print("no --sensor-mbus-code argument");
-        exit(0);
-    }
-    if(args.sensor_width == 0) {
-        print("no --sensor-width argument");
-        exit(0);
-    }
-    if(args.sensor_height == 0) {
-        print("no --sensor-height argument");
-        exit(0);
-    }
-    if(args.width == 0) {
-        print("no --width argument");
-        exit(0);
-    }
-    if(args.height == 0) {
-        print("no --height argument");
-        exit(0);
-    }
+    DYN_ASSERT(args.savedir != nullptr, "no --output argument");
+    DYN_ASSERT(args.cio2_devnode != nullptr, "no --cio2 argument");
+    DYN_ASSERT(args.imgu_devnode != nullptr, "no --imgu argument");
+    DYN_ASSERT(args.cio2_entity != nullptr, "no --cio2-entity argument");
+    DYN_ASSERT(args.imgu_entity != nullptr, "no --imgu-entity argument");
+    DYN_ASSERT(args.sensor_mbus_code != 0, "no --sensor-mbus-code argument");
+    DYN_ASSERT(args.sensor_width != 0, "no --sensor-width argument");
+    DYN_ASSERT(args.sensor_height != 0, "no --sensor-height argument");
+    DYN_ASSERT(args.width != 0, "no --width argument");
+    DYN_ASSERT(args.height != 0, "no --height argument");
+
     return args;
 }
 

@@ -50,6 +50,45 @@ auto apply_shd_lut(ipu3_uapi_params& params, const double gain) -> void {
 }
 } // namespace
 
+auto Control::is_active() -> bool {
+    return true;
+}
+
+auto Control::get_type() -> vcw::ControlType {
+    return vcw::ControlType::Int;
+}
+
+auto Control::get_label() -> std::string_view {
+    return label;
+}
+
+auto Control::get_range() -> vcw::ValueRange {
+    return {min, max, 1};
+}
+
+auto Control::get_current() -> int {
+    return current;
+}
+
+auto Control::get_menu_size() -> size_t {
+    return 0;
+}
+
+auto Control::get_menu_label(const size_t /*index*/) -> std::string_view {
+    return "";
+}
+
+auto Control::get_menu_value(const size_t /*index*/) -> int {
+    return 0;
+}
+
+Control::Control(std::string label, const ControlKind kind, const int min, const int max, const int current)
+    : label(std::move(label)),
+      kind(kind),
+      min(min),
+      max(max),
+      current(current) {}
+
 auto init_params_buffer(ipu3_uapi_params& params, const algo::PipeConfig& pipe_config, const ipu3_uapi_grid_config& bds_grid) -> void {
     // https://docs.kernel.org/admin-guide/media/ipu3.html
 
@@ -273,29 +312,28 @@ auto init_params_buffer(ipu3_uapi_params& params, const algo::PipeConfig& pipe_c
     }
 }
 
-auto create_control_rows() -> std::vector<VCWindow::Row> {
-    auto ret = std::vector<VCWindow::Row>();
-    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.r", ControlKind::WBGainR, 0, 0x1FFF, 16});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.b", ControlKind::WBGainB, 0, 0x1FFF, 16});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.gr", ControlKind::WBGainGR, 0, 0x1FFF, 16});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"wb_gains.gb", ControlKind::WBGainGB, 0, 0x1FFF, 16});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.r", ControlKind::BLCR, -2048, 2047, 64});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.b", ControlKind::BLCB, -2048, 2047, 64});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.gr", ControlKind::BLCGR, -2048, 2047, 64});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"obgrid_param.gb", ControlKind::BLCGB, -2048, 2047, 64});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"gamma", ControlKind::GammaCollection, 0, 512, 16});
-    ret.emplace_back(vcw::Tag<Control>(), Control{"lens shading", ControlKind::LensShading, -128, 128, 0});
-
-    ret.emplace_back(vcw::Tag<vcw::Label<vcw::LabelType::Quit>>(), vcw::Label<vcw::LabelType::Quit>{0, "Quit"});
-
+auto create_control_rows() -> std::vector<vcw::Row> {
+    auto ret = std::vector<vcw::Row>();
+    ret.emplace_back(vcw::Tag<vcw::ControlPtr>(), new Control("wb_gains.r", ControlKind::WBGainR, 0, 0x1FFF, 16));
+    ret.emplace_back(vcw::Tag<vcw::ControlPtr>(), new Control("wb_gains.b", ControlKind::WBGainB, 0, 0x1FFF, 16));
+    ret.emplace_back(vcw::Tag<vcw::ControlPtr>(), new Control("wb_gains.gr", ControlKind::WBGainGR, 0, 0x1FFF, 16));
+    ret.emplace_back(vcw::Tag<vcw::ControlPtr>(), new Control("wb_gains.gb", ControlKind::WBGainGB, 0, 0x1FFF, 16));
+    ret.emplace_back(vcw::Tag<vcw::ControlPtr>(), new Control("obgrid_param.r", ControlKind::BLCR, -2048, 2047, 64));
+    ret.emplace_back(vcw::Tag<vcw::ControlPtr>(), new Control("obgrid_param.b", ControlKind::BLCB, -2048, 2047, 64));
+    ret.emplace_back(vcw::Tag<vcw::ControlPtr>(), new Control("obgrid_param.gr", ControlKind::BLCGR, -2048, 2047, 64));
+    ret.emplace_back(vcw::Tag<vcw::ControlPtr>(), new Control("obgrid_param.gb", ControlKind::BLCGB, -2048, 2047, 64));
+    ret.emplace_back(vcw::Tag<vcw::ControlPtr>(), new Control("gamma", ControlKind::GammaCollection, 0, 512, 16));
+    ret.emplace_back(vcw::Tag<vcw::ControlPtr>(), new Control("lens shading", ControlKind::LensShading, -128, 128, 0));
+    ret.emplace_back(vcw::Tag<vcw::QuitButton>(), vcw::QuitButton{});
     return ret;
 }
 
-auto apply_controls(ipu3_uapi_params** const params_array, const size_t params_array_size, Control& control, const int value) -> void {
-    control.current = value;
+auto ParamsCallbacks::set_control_value(vcw::Control& control, int value) -> void {
+    auto& ctrl   = *std::bit_cast<Control*>(&control);
+    ctrl.current = value;
     for(auto i = 0u; i < params_array_size; i += 1) {
         auto& params = *params_array[i];
-        switch(control.kind) {
+        switch(ctrl.kind) {
         case ControlKind::WBGainR:
             params.acc_param.bnr.wb_gains.r = value;
             break;

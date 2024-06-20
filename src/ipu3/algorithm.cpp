@@ -2,6 +2,8 @@
 #include <iostream>
 #include <vector>
 
+#include "../macros/assert.hpp"
+#include "../util/assert.hpp"
 #include "algorithm.hpp"
 
 namespace algo {
@@ -145,10 +147,7 @@ auto calculate_fov(const Size input, const PipeConfig& config) -> FOV {
 }
 
 auto calculate_pipeline_config(const Size input, const Size output, const Size viewfinder) -> PipeConfig {
-    if(input.width < IF_CROP_MAX_W || input.height < IF_CROP_MAX_H) {
-        std::cerr << "not supported" << std::endl;
-        exit(1);
-    }
+    DYN_ASSERT(input.width >= IF_CROP_MAX_W && input.height >= IF_CROP_MAX_H, "not supported");
 
     auto pipeconfigs = std::vector<PipeConfig>();
 
@@ -184,10 +183,7 @@ auto calculate_pipeline_config(const Size input, const Size output, const Size v
         if_h -= IF_ALIGN_H;
     }
 
-    if(pipeconfigs.empty()) {
-        std::cerr << "no configs found" << std::endl;
-        exit(1);
-    }
+    DYN_ASSERT(!pipeconfigs.empty(), "no configs found");
 
     auto best_fov   = calculate_fov(input, pipeconfigs[0]);
     auto best_index = 0u;

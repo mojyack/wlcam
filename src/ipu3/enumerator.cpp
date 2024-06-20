@@ -6,26 +6,25 @@
 #include "../ioutil.hpp"
 #include "../media-device.hpp"
 #include "../udev.hpp"
-#include "../util/error.hpp"
-#include "../v4l2.hpp"
+#include "../util/print.hpp"
 #include "cio2.hpp"
 #include "imgu.hpp"
 
 namespace {
 auto read_sized(const std::string_view prompt, const size_t limit) -> size_t {
     while(true) {
-        stdio::print(prompt, ": [0..", limit - 1, "] ");
+        print(prompt, ": [0..", limit - 1, "] ");
         const auto i = stdio::read_stdin<size_t>();
         if(i < limit) {
             return i;
         }
-        stdio::println("invalid input");
+        print("invalid input");
     }
 }
 } // namespace
 
 auto main() -> int {
-    stdio::println("searching for ipu3 devices");
+    print("searching for ipu3 devices");
 
     const auto udev_devices = dev::enumerate();
     auto       csi2_devices = std::vector<MediaDevice>();
@@ -37,20 +36,20 @@ auto main() -> int {
 
         auto media_deivce = parse_device(devnode.c_str(), udev_devices);
         if(media_deivce.find_entity_by_name("ipu3-csi2 0") != nullptr) {
-            stdio::println("found csi2");
+            print("found csi2");
             csi2_devices.emplace_back(media_deivce);
         } else if(media_deivce.find_entity_by_name("ipu3-imgu 0") != nullptr) {
-            stdio::println("found imgu");
+            print("found imgu");
             imgu_devices.emplace_back(media_deivce);
         }
     }
 
     if(csi2_devices.empty()) {
-        stdio::println("no csi2 device found");
+        print("no csi2 device found");
         return 1;
     }
     if(imgu_devices.empty()) {
-        stdio::println("no imgu device found");
+        print("no imgu device found");
         return 1;
     }
 
@@ -79,9 +78,9 @@ auto main() -> int {
         sensors.emplace_back(sensor);
     }
 
-    stdio::println("the csi2 has ", sensors.size(), " sensors");
+    print("the csi2 has ", sensors.size(), " sensors");
     for(auto i = 0u; i < sensors.size(); i += 1) {
-        stdio::println("  ", i, " ", sensors[i]->name);
+        print("  ", i, " ", sensors[i]->name);
     }
     const auto sensor = sensors[read_sized("select sensor", sensors.size())];
 
@@ -95,22 +94,22 @@ auto main() -> int {
     cio2.init(const_cast<Entity*>(csi2_entity));
 
     const auto sensor_formats = cio2.get_formats();
-    stdio::println("the sensor suppors ", sensor_formats.size(), " formats");
+    print("the sensor suppors ", sensor_formats.size(), " formats");
     for(auto i = 0u; i < sensor_formats.size(); i += 1) {
-        stdio::println("  ", i, " ", sensor_formats[i].code);
+        print("  ", i, " ", sensor_formats[i].code);
     }
     const auto& sensor_format = sensor_formats[read_sized("select media bus code", sensor_formats.size())];
 
-    stdio::println("the sensor suppors ", sensor_format.sizes.size(), " output sizes");
+    print("the sensor suppors ", sensor_format.sizes.size(), " output sizes");
     for(auto i = 0u; i < sensor_format.sizes.size(); i += 1) {
-        stdio::println("  ", i, " ", sensor_format.sizes[i].max.width, "x", sensor_format.sizes[i].max.height);
+        print("  ", i, " ", sensor_format.sizes[i].max.width, "x", sensor_format.sizes[i].max.height);
     }
     const auto& sensor_format_size = sensor_format.sizes[read_sized("select output size", sensor_format.sizes.size())];
 
     const auto width  = stdio::read_stdin<size_t>("imgu output width: ");
     const auto height = stdio::read_stdin<size_t>("imgu output height: ");
 
-    stdio::println(
+    print(
         "launch wlcam-ipu3 with these arguments:\n",
         " --cio2 ", csi2_device.dev_node,
         " --imgu ", imgu_device.dev_node,
@@ -122,10 +121,10 @@ auto main() -> int {
         " --width ", width,
         " --height ", height);
 
-    stdio::println("controls available for these devices:");
-    stdio::println("  ", cio2.sensor.dev_node);
+    print("controls available for these devices:");
+    print("  ", cio2.sensor.dev_node);
     if(cio2.sensor.lens) {
-        stdio::println("  ", cio2.sensor.lens->dev_node);
+        print("  ", cio2.sensor.lens->dev_node);
     }
 
     return 0;

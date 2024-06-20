@@ -3,7 +3,8 @@
 #include <linux/v4l2-subdev.h>
 #include <sys/ioctl.h>
 
-#include "../assert.hpp"
+#include "../macros/assert.hpp"
+#include "../util/assert.hpp"
 #include "cio2.hpp"
 
 namespace ipu3::cio2 {
@@ -16,7 +17,7 @@ auto Sensor::enum_pad_codes() const -> std::vector<uint32_t> {
         mbus_enum.index = i;
         mbus_enum.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 
-        if(ioctl(fd, VIDIOC_SUBDEV_ENUM_MBUS_CODE, &mbus_enum) < 0) {
+        if(ioctl(fd.as_handle(), VIDIOC_SUBDEV_ENUM_MBUS_CODE, &mbus_enum) < 0) {
             DYN_ASSERT(errno == EINVAL);
             break;
         }
@@ -37,7 +38,7 @@ auto Sensor::enum_pad_sizes(const uint32_t mbus_code) const -> std::vector<SizeR
         size_enum.code  = mbus_code;
         size_enum.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 
-        if(ioctl(fd, VIDIOC_SUBDEV_ENUM_FRAME_SIZE, &size_enum) < 0) {
+        if(ioctl(fd.as_handle(), VIDIOC_SUBDEV_ENUM_FRAME_SIZE, &size_enum) < 0) {
             DYN_ASSERT(errno == EINVAL || errno == ENOTTY);
             break;
         }
@@ -81,13 +82,13 @@ auto CIO2Device::init(Entity* const csi2) -> void {
     media->configure_link(link, true);
 
     cio2 = FileDescriptor(open(csi2->dev_node.data(), O_RDWR));
-    DYN_ASSERT(cio2 >= 0);
+    DYN_ASSERT(cio2.as_handle() >= 0);
 
     this->sensor = Sensor::create(*media, *sensor);
 
     const auto output = media->find_entity_by_name(build_string("ipu3-cio2 ", csi2->name.back()));
     this->output      = FileDescriptor(open(output->dev_node.data(), O_RDWR));
-    DYN_ASSERT(this->output >= 0);
+    DYN_ASSERT(this->output.as_handle() >= 0);
 }
 
 auto CIO2Device::init(const std::string_view entity_name) -> void {

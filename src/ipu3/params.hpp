@@ -1,5 +1,5 @@
 #pragma once
-#include "../v4l2-wlctl/src/window.hpp"
+#include "../vcw/window.hpp"
 #include "algorithm.hpp"
 #include "intel-ipu3.h"
 
@@ -21,58 +21,36 @@ enum class ControlKind {
     User5,
 };
 
-struct Control {
+struct Control : vcw::Control {
     std::string label;
     ControlKind kind;
     int         min;
     int         max;
     int         current;
 
-    auto inactive() const -> bool {
-        return false;
-    }
+    auto is_active() -> bool override;
+    auto get_type() -> vcw::ControlType override;
+    auto get_label() -> std::string_view override;
+    auto get_range() -> vcw::ValueRange override;
+    auto get_current() -> int override;
+    auto get_menu_size() -> size_t override;
+    auto get_menu_label(size_t index) -> std::string_view override;
+    auto get_menu_value(size_t index) -> int override;
 
-    auto get_type() const -> vcw::ControlType {
-        return vcw::ControlType::Int;
-    }
+    Control(std::string label, ControlKind kind, int min, int max, int current);
+};
 
-    auto get_label() const -> std::string_view {
-        return label;
-    }
+struct ParamsCallbacks : public vcw::UserCallbacks {
+    ipu3_uapi_params** params_array;
+    size_t             params_array_size;
 
-    auto get_max() const -> int {
-        return max;
-    }
-
-    auto get_min() const -> int {
-        return min;
-    }
-
-    auto get_step() const -> int {
-        return 1;
-    }
-
-    auto get_current() const -> int {
-        return current;
-    }
-
-    auto get_menu_size() const -> size_t {
-        return 0;
-    }
-
-    auto get_menu_label(const int /*i*/) const -> std::string_view {
-        return "";
-    }
-
-    auto get_menu_value(const int /*i*/) const -> int {
-        return 0;
+    auto set_control_value(vcw::Control& control, int value) -> void override;
+    // TODO
+    auto quit() -> void override {
+        std::quick_exit(0);
     }
 };
 
-using VCWindow = vcw::Window<Control>;
-
 auto init_params_buffer(ipu3_uapi_params& params, const algo::PipeConfig& pipe_config, const ipu3_uapi_grid_config& bds_grid) -> void;
-
-auto create_control_rows() -> std::vector<VCWindow::Row>;
-
+auto create_control_rows() -> std::vector<vcw::Row>;
 auto apply_controls(ipu3_uapi_params** params_array, size_t params_array_size, Control& control, int value) -> void;
