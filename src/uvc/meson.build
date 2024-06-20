@@ -12,6 +12,6 @@ simple_files = files(
 
 simpel_deps = [dependency('libturbojpeg')] + gawl_deps
 
-executable('wlcam', simple_files,
+executable('wlcam-uvc', simple_files,
             dependencies : simpel_deps,
             install : true)

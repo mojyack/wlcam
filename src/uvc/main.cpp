@@ -7,7 +7,7 @@
 #include "args.hpp"
 #include "camera.hpp"
 
-class SimpleWindowCallbacks : public WindowCallbacks {
+class UVCWindowCallbacks : public WindowCallbacks {
   public:
     Camera* cam;
 
@@ -16,7 +16,7 @@ class SimpleWindowCallbacks : public WindowCallbacks {
         application->quit();
     }
 
-    SimpleWindowCallbacks(Context& context)
+    UVCWindowCallbacks(Context& context)
         : WindowCallbacks(context) {}
 };
 
@@ -51,7 +51,7 @@ auto main(const int argc, const char* const argv[]) -> int {
     auto       context      = Context();
     auto       event_fifo   = args.event_fifo != nullptr ? RemoteServer(args.event_fifo) : RemoteServer();
 
-    auto       callbacks = std::shared_ptr<SimpleWindowCallbacks>(new SimpleWindowCallbacks(context));
+    auto       callbacks = std::shared_ptr<UVCWindowCallbacks>(new UVCWindowCallbacks(context));
     auto       app       = gawl::WaylandApplication();
     const auto window    = app.open_window({.title = "wlcam"}, callbacks);
     const auto wlwindow  = std::bit_cast<gawl::WaylandWindow*>(window);
