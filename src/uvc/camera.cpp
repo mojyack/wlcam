@@ -68,6 +68,48 @@ struct RecordContext {
 };
 } // namespace
 
+auto Camera::loader_main(const size_t index) -> bool {
+    unwrap_ob(fmt, v4l2::get_current_format(fd));
+    auto  window_context = window->fork_context();
+    auto& event          = loaders[index].event;
+loop:
+    if(!running) {
+        return true;
+    }
+    event.wait();
+    event.clear();
+    if(!running) {
+        return true;
+    }
+
+    const auto frame_count = current_frame_count.fetch_add(1);
+
+    // unpack image
+    auto img = std::shared_ptr<GraphicLike>();
+    switch(fmt.pixelformat) {
+    case v4l2::fourcc("MJPG"): {
+        unwrap_ob(bufs, jpg::decode_jpeg_to_yuvp(static_cast<std::byte*>(buffers[index].start), buffers[index].length, 1));
+        img.reset(new GraphicLike(Tag<PlanarGraphic>(), width, height, fmt.bytesperline, bufs.ppc_x, bufs.ppc_y, bufs.y.data(), bufs.u.data(), bufs.v.data()));
+    } break;
+    case v4l2::fourcc("YUYV"): {
+        img.reset(new GraphicLike(Tag<YUV422iGraphic>(), width, height, fmt.bytesperline, static_cast<std::byte*>(buffers[index].start)));
+    } break;
+    case v4l2::fourcc("NV12"): {
+        const auto buf    = std::bit_cast<std::byte*>(buffers[index].start);
+        const auto stride = fmt.bytesperline;
+        auto       img    = std::shared_ptr<GraphicLike>(new GraphicLike(Tag<YUV420spGraphic>(), width, height, stride, buf, buf + stride * height));
+    } break;
+    }
+    assert_b(v4l2::queue_buffer(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, index));
+    window_context.flush();
+
+    if(front_frame_count.exchange(frame_count) <= frame_count) {
+        std::swap(context->critical_graphic, img);
+    }
+
+    goto loop;
+}
+
 auto Camera::worker_main() -> bool {
     auto fds      = std::array<pollfd, 1>();
     fds[0].fd     = fd;
@@ -81,13 +123,15 @@ auto Camera::worker_main() -> bool {
     }
 
     unwrap_ob(fmt, v4l2::get_current_format(fd));
-    auto window_context = window->fork_context();
-    auto ubuf           = (std::byte*)(nullptr);
-    auto vbuf           = (std::byte*)(nullptr);
+    auto ubuf = (std::byte*)(nullptr);
+    auto vbuf = (std::byte*)(nullptr);
     if(fmt.pixelformat == v4l2::fourcc("NV12")) {
         ubuf = new std::byte[height / 4 * width];
         vbuf = new std::byte[height / 4 * width];
     }
+
+    auto timer = Timer();
+    auto loops = 0;
 
 loop:
     if(!running) {
@@ -165,37 +209,24 @@ loop:
         record_context->save_filename();
     }
 
-    // unpack image
-    auto img = std::shared_ptr<GraphicLike>();
-    switch(fmt.pixelformat) {
-    case v4l2::fourcc("MJPG"): {
-        static auto cnt              = 0;
-        auto        downscale_factor = cnt % 180 >= 90 ? 2 : 1;
-        print(downscale_factor);
-        cnt += 1;
-        unwrap_ob(bufs, jpg::decode_jpeg_to_yuvp(static_cast<std::byte*>(buffers[index].start), buffers[index].length, downscale_factor));
-        img.reset(new GraphicLike(Tag<PlanarGraphic>(), width / downscale_factor, height / downscale_factor, fmt.bytesperline, bufs.ppc_x, bufs.ppc_y, bufs.y.data(), bufs.u.data(), bufs.v.data()));
-    } break;
-    case v4l2::fourcc("YUYV"): {
-        img.reset(new GraphicLike(Tag<YUV422iGraphic>(), width, height, fmt.bytesperline, static_cast<std::byte*>(buffers[index].start)));
-    } break;
-    case v4l2::fourcc("NV12"): {
-        const auto buf    = std::bit_cast<std::byte*>(buffers[index].start);
-        const auto stride = fmt.bytesperline;
-        auto       img    = std::shared_ptr<GraphicLike>(new GraphicLike(Tag<YUV420spGraphic>(), width, height, stride, buf, buf + stride * height));
-    } break;
+    loaders[index].event.wakeup();
+
+    loops += 1;
+    if(timer.elapsed<std::chrono::milliseconds>() >= 1000) {
+        print(loops, " fps");
+        timer.reset();
+        loops = 0;
     }
 
-    assert_b(v4l2::queue_buffer(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, index));
-
-    window_context.flush();
-    std::swap(context->critical_graphic, img);
     goto loop;
 }
 
 auto Camera::run() -> void {
     running = true;
-    worker  = std::thread(&Camera::worker_main, this);
+    for(auto i = 0u; i < loaders.size(); i += 1) {
+        loaders[i].thread = std::thread(&Camera::loader_main, this, i);
+    }
+    worker = std::thread(&Camera::worker_main, this);
 }
 
 auto Camera::shutdown() -> void {
@@ -203,6 +234,10 @@ auto Camera::shutdown() -> void {
         return;
     }
     running = false;
+    for(auto& loader : loaders) {
+        loader.event.wakeup();
+        loader.thread.join();
+    }
     worker.join();
 }
 
