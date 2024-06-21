@@ -19,6 +19,14 @@ auto save_jpeg_frame(const char* const path, const std::byte* const ptr) -> bool
     return write(fd.as_handle(), ptr, size) == ssize_t(size);
 }
 
+auto save_yuvp_frame(const char* const path, const int width, const int height, const int stride, const int ppc_x, const int ppc_y, const std::byte* const y, const std::byte* const u, const std::byte* const v) -> bool {
+    unwrap_ob(jpeg, jpg::encode_yuvp_to_jpeg(width, height, stride, ppc_x, ppc_y, y, u, v));
+    const auto fd = FileDescriptor(open(path, O_RDWR | O_CREAT, 0644));
+    assert_b(fd.as_handle() >= 0);
+    assert_b(write(fd.as_handle(), jpeg.buffer.get(), jpeg.size) == ssize_t(jpeg.size));
+    return true;
+}
+
 class Timer {
   private:
     std::chrono::steady_clock::time_point time;
@@ -108,23 +116,13 @@ loop:
         } break;
         case v4l2::fourcc("YUYV"): {
             const auto [ybuf, ubuf, vbuf] = yuv::yuv422i_to_yuv422p(buf, width, height, fmt.bytesperline);
-
-            unwrap_ob(jpeg, jpg::encode_yuvp_to_jpeg(width, height, fmt.bytesperline / 2, 2, 1, ybuf.data(), ubuf.data(), vbuf.data()));
-            const auto fd = FileDescriptor(open(path.c_str(), O_RDWR | O_CREAT, 0644));
-            assert_b(fd.as_handle() >= 0);
-            assert_b(write(fd.as_handle(), jpeg.buffer.get(), jpeg.size) == ssize_t(jpeg.size));
-
+            assert_b(save_yuvp_frame(path.data(), width, height, fmt.bytesperline / 2, 2, 1, ybuf.data(), ubuf.data(), vbuf.data()));
             context->ui_command = Command::TakePhotoDone;
         } break;
         case v4l2::fourcc("NV12"): {
             const auto uvbuf = buf + fmt.bytesperline * height;
             yuv::yuv420sp_uvsp_to_uvp(uvbuf, ubuf, vbuf, width, height, fmt.bytesperline);
-
-            unwrap_ob(jpeg, jpg::encode_yuvp_to_jpeg(width, height, fmt.bytesperline, 2, 2, buf, ubuf, vbuf));
-            const auto fd = FileDescriptor(open(path.c_str(), O_RDWR | O_CREAT, 0644));
-            assert_b(fd.as_handle() >= 0);
-            assert_b(write(fd.as_handle(), jpeg.buffer.get(), jpeg.size) == ssize_t(jpeg.size));
-
+            assert_b(save_yuvp_frame(path.data(), width, height, fmt.bytesperline, 2, 2, buf, ubuf, vbuf));
             context->ui_command = Command::TakePhotoDone;
         } break;
         }
@@ -171,7 +169,10 @@ loop:
     auto img = std::shared_ptr<GraphicLike>();
     switch(fmt.pixelformat) {
     case v4l2::fourcc("MJPG"): {
-        constexpr auto downscale_factor = 4;
+        static auto cnt              = 0;
+        auto        downscale_factor = cnt % 180 >= 90 ? 2 : 1;
+        print(downscale_factor);
+        cnt += 1;
         unwrap_ob(bufs, jpg::decode_jpeg_to_yuvp(static_cast<std::byte*>(buffers[index].start), buffers[index].length, downscale_factor));
         img.reset(new GraphicLike(Tag<PlanarGraphic>(), width / downscale_factor, height / downscale_factor, fmt.bytesperline, bufs.ppc_x, bufs.ppc_y, bufs.y.data(), bufs.u.data(), bufs.v.data()));
     } break;
