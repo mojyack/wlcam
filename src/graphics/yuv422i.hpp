@@ -10,5 +10,5 @@ class YUV422iGraphic : public gawl::impl::GraphicBase {
   public:
     auto update_texture(int width, int height, int stride, const std::byte* yuv) -> void;
 
-    YUV422iGraphic(int width, int height, int stride, const std::byte* yuv);
+    YUV422iGraphic();
 };

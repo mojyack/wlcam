@@ -44,7 +44,6 @@ auto PlanarGraphic::update_texture(const int width, const int height, const int 
     }
 }
 
-PlanarGraphic::PlanarGraphic(const int width, const int height, const int stride, const int ppc_x, const int ppc_y, const std::byte* const y, const std::byte* const u, const std::byte* const v)
+PlanarGraphic::PlanarGraphic()
     : MultiTex(*::shader, 3) {
-    update_texture(width, height, stride, ppc_x, ppc_y, y, u, v);
 }

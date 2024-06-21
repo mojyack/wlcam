@@ -25,9 +25,9 @@ auto WindowCallbacks::refresh() -> void {
     gawl::clear_screen({0, 0, 0, 0});
     const auto [screen_width, screen_height] = window->get_window_size();
     const auto screen_rect                   = gawl::Rectangle{{0, 0}, {1. * screen_width, 1. * screen_height}};
-    const auto graphic                       = context->critical_graphic;
-    if(graphic) {
-        graphic->apply([this, screen_rect](auto& g) { g.draw_fit_rect(*window, screen_rect); });
+    const auto frame                         = context->frame;
+    if(frame) {
+        frame->draw_fit_rect(*window, screen_rect);
     }
 
     gawl::mask_alpha();

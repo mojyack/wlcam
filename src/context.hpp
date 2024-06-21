@@ -1,8 +1,5 @@
 #pragma once
-#include "graphics/planar.hpp"
-#include "graphics/yuv420sp.hpp"
-#include "graphics/yuv422i.hpp"
-#include "util/variant.hpp"
+#include "graphics-wrapper.hpp"
 
 enum class Command {
     None,
@@ -14,10 +11,8 @@ enum class Command {
     StopRecordingDone,
 };
 
-using GraphicLike = Variant<PlanarGraphic, YUV420spGraphic, YUV422iGraphic>;
-
 struct Context {
-    std::shared_ptr<GraphicLike> critical_graphic;
-    Command                      ui_command;     // camera -> ui
-    Command                      camera_command; // ui -> camera
+    std::shared_ptr<Frame> frame;
+    Command                ui_command;     // camera -> ui
+    Command                camera_command; // ui -> camera
 };

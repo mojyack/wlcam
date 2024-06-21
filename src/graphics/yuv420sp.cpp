@@ -52,7 +52,6 @@ auto YUV420spGraphic::update_texture(const int width, const int height, const in
     }
 }
 
-YUV420spGraphic::YUV420spGraphic(const int width, const int height, const int stride, const std::byte* const y, const std::byte* const uv)
+YUV420spGraphic::YUV420spGraphic()
     : MultiTex(*::shader, 2) {
-    update_texture(width, height, stride, y, uv);
 }

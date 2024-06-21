@@ -5,6 +5,7 @@
 #include <poll.h>
 #include <unistd.h>
 
+#include "../encoder/encoder.hpp"
 #include "../jpeg.hpp"
 #include "../macros/unwrap.hpp"
 #include "../remote-server.hpp"
@@ -13,20 +14,6 @@
 #include "camera.hpp"
 
 namespace {
-auto save_jpeg_frame(const char* const path, const std::byte* const ptr) -> bool {
-    const auto fd   = FileDescriptor(open(path, O_RDWR | O_CREAT, 0644));
-    const auto size = jpg::calc_jpeg_size(ptr);
-    return write(fd.as_handle(), ptr, size) == ssize_t(size);
-}
-
-auto save_yuvp_frame(const char* const path, const int width, const int height, const int stride, const int ppc_x, const int ppc_y, const std::byte* const y, const std::byte* const u, const std::byte* const v) -> bool {
-    unwrap_ob(jpeg, jpg::encode_yuvp_to_jpeg(width, height, stride, ppc_x, ppc_y, y, u, v));
-    const auto fd = FileDescriptor(open(path, O_RDWR | O_CREAT, 0644));
-    assert_b(fd.as_handle() >= 0);
-    assert_b(write(fd.as_handle(), jpeg.buffer.get(), jpeg.size) == ssize_t(jpeg.size));
-    return true;
-}
-
 class Timer {
   private:
     std::chrono::steady_clock::time_point time;
@@ -48,23 +35,21 @@ class Timer {
 };
 
 struct RecordContext {
-    size_t        frame = 0;
-    std::string   tempdir;
-    std::ofstream catfile;
-    Timer         timer;
+    ff::Encoder encoder;
+    Timer       timer;
 
-    auto save_filename() -> void {
-        catfile << "file " << frame << ".jpg" << std::endl;
-    }
-
-    auto save_duration() -> void {
-        catfile << "duration " << timer.elapsed<std::chrono::microseconds>() << "us" << std::endl;
-        timer.reset();
-    }
-
-    RecordContext(std::string tempdir_)
-        : tempdir(std::move(tempdir_)),
-          catfile(tempdir + "/concat.txt") {}
+    RecordContext(std::string path, const AVPixelFormat pix_fmt, const int width, const int height)
+        : encoder(ff::EncoderParams{
+              .output = std::move(path),
+              .video  = ff::VideoParams{
+                   .codec = {
+                       .name = "libx264",
+                  },
+                   .pix_fmt = pix_fmt,
+                   .width   = width,
+                   .height  = height,
+              },
+          }) {}
 };
 } // namespace
 
@@ -85,26 +70,69 @@ loop:
     const auto frame_count = current_frame_count.fetch_add(1);
 
     // unpack image
-    auto img = std::shared_ptr<GraphicLike>();
+    auto frame = std::shared_ptr<Frame>();
     switch(fmt.pixelformat) {
-    case v4l2::fourcc("MJPG"): {
-        unwrap_ob(bufs, jpg::decode_jpeg_to_yuvp(static_cast<std::byte*>(buffers[index].start), buffers[index].length, 1));
-        img.reset(new GraphicLike(Tag<PlanarGraphic>(), width, height, fmt.bytesperline, bufs.ppc_x, bufs.ppc_y, bufs.y.data(), bufs.u.data(), bufs.v.data()));
-    } break;
-    case v4l2::fourcc("YUYV"): {
-        img.reset(new GraphicLike(Tag<YUV422iGraphic>(), width, height, fmt.bytesperline, static_cast<std::byte*>(buffers[index].start)));
-    } break;
-    case v4l2::fourcc("NV12"): {
-        const auto buf    = std::bit_cast<std::byte*>(buffers[index].start);
-        const auto stride = fmt.bytesperline;
-        img.reset(new GraphicLike(Tag<YUV420spGraphic>(), width, height, stride, buf, buf + stride * height));
-    } break;
+    case v4l2::fourcc("MJPG"):
+        frame.reset(new JpegFrame());
+        break;
+    case v4l2::fourcc("YUYV"):
+        frame.reset(new YUV422IFrame(width, height, fmt.bytesperline));
+        break;
+    case v4l2::fourcc("NV12"):
+        frame.reset(new YUV420SPFrame(width, height, fmt.bytesperline));
+        break;
+    default:
+        WARN("pixelformat bug");
+        return false;
     }
+    const auto byte_array = Frame::ByteArray{static_cast<std::byte*>(buffers[index].start), buffers[index].length};
+    frame->load_texture(byte_array);
     assert_b(v4l2::queue_buffer(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, index));
     window_context.flush();
 
     if(front_frame_count.exchange(frame_count) <= frame_count) {
-        std::swap(context->critical_graphic, img);
+        context->frame = frame;
+    }
+
+    // proc command
+    switch(std::exchange(context->camera_command, Command::None)) {
+    case Command::TakePhoto: {
+        const auto path = file_manager->get_next_path().string() + ".jpg";
+        assert_b(frame->save_to_jpeg(byte_array, path));
+        context->ui_command = Command::TakePhotoDone;
+    } break;
+    case Command::StartRecording: {
+        /*
+if(fmt.pixelformat != v4l2::fourcc("MJPG")) {
+print("currently movie is only supported in mpeg format");
+break;
+}
+auto path = file_manager->get_next_path().string();
+std::filesystem::create_directories(path);
+if(event_fifo) {
+event_fifo->send_event(RemoteEvents::RecordStart{path});
+}
+record_context.emplace(std::move(path), AV_PIX_FMT_YUV422P, width, height);
+*/
+        context->ui_command = Command::StartRecordingDone;
+    } break;
+    case Command::StopRecording: {
+        /*
+if(fmt.pixelformat != v4l2::fourcc("MJPG")) {
+break;
+}
+if(event_fifo) {
+const auto path = std::move(record_context->tempdir);
+record_context.reset();
+event_fifo->send_event(RemoteEvents::RecordStop{path});
+} else {
+record_context.reset();
+}
+*/
+        context->ui_command = Command::StopRecordingDone;
+    } break;
+    default:
+        break;
     }
 
     goto loop;
@@ -122,14 +150,6 @@ auto Camera::worker_main() -> bool {
         event_fifo->send_event(RemoteEvents::Configure{.fps = int(fps)});
     }
 
-    unwrap_ob(fmt, v4l2::get_current_format(fd));
-    auto ubuf = (std::byte*)(nullptr);
-    auto vbuf = (std::byte*)(nullptr);
-    if(fmt.pixelformat == v4l2::fourcc("NV12")) {
-        ubuf = new std::byte[height / 4 * width];
-        vbuf = new std::byte[height / 4 * width];
-    }
-
     auto timer = Timer();
     auto loops = 0;
 
@@ -143,62 +163,10 @@ loop:
     assert_b(poll(fds.data(), 1, 0) != -1);
     unwrap_ob(index, v4l2::dequeue_buffer(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE));
 
+    /*
     // if recording, save elapsed time
     if(record_context) {
         record_context->save_duration();
-    }
-
-    // proc command
-    switch(std::exchange(context->camera_command, Command::None)) {
-    case Command::TakePhoto: {
-        const auto path = file_manager->get_next_path().string() + ".jpg";
-        const auto buf  = std::bit_cast<const std::byte*>(buffers[index].start);
-        switch(fmt.pixelformat) {
-        case v4l2::fourcc("MJPG"): {
-            assert_b(save_jpeg_frame(path.data(), buf));
-            context->ui_command = Command::TakePhotoDone;
-        } break;
-        case v4l2::fourcc("YUYV"): {
-            const auto [ybuf, ubuf, vbuf] = yuv::yuv422i_to_yuv422p(buf, width, height, fmt.bytesperline);
-            assert_b(save_yuvp_frame(path.data(), width, height, fmt.bytesperline / 2, 2, 1, ybuf.data(), ubuf.data(), vbuf.data()));
-            context->ui_command = Command::TakePhotoDone;
-        } break;
-        case v4l2::fourcc("NV12"): {
-            const auto uvbuf = buf + fmt.bytesperline * height;
-            yuv::yuv420sp_uvsp_to_uvp(uvbuf, ubuf, vbuf, width, height, fmt.bytesperline);
-            assert_b(save_yuvp_frame(path.data(), width, height, fmt.bytesperline, 2, 2, buf, ubuf, vbuf));
-            context->ui_command = Command::TakePhotoDone;
-        } break;
-        }
-    } break;
-    case Command::StartRecording: {
-        if(fmt.pixelformat != v4l2::fourcc("MJPG")) {
-            print("currently movie is only supported in mpeg format");
-            break;
-        }
-        auto path = file_manager->get_next_path().string();
-        std::filesystem::create_directories(path);
-        if(event_fifo) {
-            event_fifo->send_event(RemoteEvents::RecordStart{path});
-        }
-        record_context.emplace(std::move(path));
-        context->ui_command = Command::StartRecordingDone;
-    } break;
-    case Command::StopRecording: {
-        if(fmt.pixelformat != v4l2::fourcc("MJPG")) {
-            break;
-        }
-        if(event_fifo) {
-            const auto path = std::move(record_context->tempdir);
-            record_context.reset();
-            event_fifo->send_event(RemoteEvents::RecordStop{path});
-        } else {
-            record_context.reset();
-        }
-        context->ui_command = Command::StopRecordingDone;
-    } break;
-    default:
-        break;
     }
 
     // record frame
@@ -208,6 +176,7 @@ loop:
         save_jpeg_frame(path.data(), static_cast<const std::byte*>(buffers[index].start));
         record_context->save_filename();
     }
+    */
 
     loaders[index].event.wakeup();
 

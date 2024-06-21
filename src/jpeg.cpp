@@ -88,11 +88,13 @@ auto decode_jpeg_to_yuvp(const std::byte* const ptr, const size_t len, const siz
     assert_o(tjDecompressToYUVPlanes(tj.get(), (unsigned char*)ptr, len, (unsigned char**)(buf.data()), width / downscale_factor, NULL, height / downscale_factor, 0) == 0);
 
     return DecodeResult{
+        width,
+        height,
+        ppc_x,
+        ppc_y,
         std::move(buf_y),
         std::move(buf_u),
         std::move(buf_v),
-        ppc_x,
-        ppc_y,
     };
 }
 

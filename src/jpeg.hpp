@@ -10,11 +10,14 @@ struct BufferDeleter {
 using Buffer = std::unique_ptr<std::byte, BufferDeleter>;
 
 struct DecodeResult {
+    int width;
+    int height;
+    int ppc_x;
+    int ppc_y;
+
     std::vector<std::byte> y;
     std::vector<std::byte> u;
     std::vector<std::byte> v;
-    int                    ppc_x;
-    int                    ppc_y;
 };
 
 struct EncodeResult {

@@ -11,5 +11,5 @@ class PlanarGraphic : public MultiTex {
   public:
     auto update_texture(int width, int height, int stride, int ppc_x, int ppc_y, const std::byte* y, const std::byte* u, const std::byte* v) -> void;
 
-    PlanarGraphic(int width, int height, int stride, int ppc_x, int ppc_y, const std::byte* y, const std::byte* u, const std::byte* v);
+    PlanarGraphic();
 };

@@ -46,7 +46,6 @@ auto YUV422iGraphic::update_texture(const int width, const int height, const int
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RG, this->width, this->height, 0, GL_RG, GL_UNSIGNED_BYTE, yuv);
 }
 
-YUV422iGraphic::YUV422iGraphic(const int width, const int height, const int stride, const std::byte* const yuv)
+YUV422iGraphic::YUV422iGraphic()
     : GraphicBase(*::shader) {
-    update_texture(width, height, stride, yuv);
 }

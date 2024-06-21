@@ -10,6 +10,6 @@ class YUV420spGraphic : public MultiTex {
   public:
     auto update_texture(int width, int height, int stride, const std::byte* y, const std::byte* uv) -> void;
 
-    YUV420spGraphic(int width, int height, int stride, const std::byte* y, const std::byte* uv);
+    YUV420spGraphic();
 };
 
