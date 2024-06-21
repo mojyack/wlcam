@@ -1,37 +1,26 @@
-#include <filesystem>
-#include <fstream>
-
 #include <poll.h>
 #include <unistd.h>
 
-#include "../encoder/encoder.hpp"
-#include "../jpeg.hpp"
 #include "../macros/unwrap.hpp"
 #include "../remote-server.hpp"
-#include "../timer.hpp"
 #include "../util/assert.hpp"
-#include "../yuv.hpp"
 #include "camera.hpp"
 
-namespace {
-struct RecordContext {
-    ff::Encoder encoder;
-    Timer       timer;
-
-    RecordContext(std::string path, const AVPixelFormat pix_fmt, const int width, const int height)
-        : encoder(ff::EncoderParams{
-              .output = std::move(path),
-              .video  = ff::VideoParams{
-                   .codec = {
-                       .name = "libx264",
-                  },
-                   .pix_fmt = pix_fmt,
-                   .width   = width,
-                   .height  = height,
+Camera::RecordContext::RecordContext(std::string path, const AVPixelFormat pix_fmt, const int width, const int height)
+    : encoder(ff::EncoderParams{
+          .output = std::move(path),
+          .video  = ff::VideoParams{
+               .codec = {
+                   .name = "h264_vaapi",
+                  // .name = "libx264",
               },
-          }) {}
-};
-} // namespace
+               .pix_fmt = pix_fmt,
+               .width   = width,
+               .height  = height,
+              // .threads = 1,
+          },
+          .ffmpeg_debug = true,
+      }) {}
 
 auto Camera::loader_main(const size_t index) -> bool {
     unwrap_ob(fmt, v4l2::get_current_format(fd));
@@ -70,9 +59,11 @@ loop:
     assert_b(v4l2::queue_buffer(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, index));
     window_context.flush();
 
-    if(front_frame_count.exchange(frame_count) <= frame_count) {
-        context->frame = frame;
+    if(front_frame_count.exchange(frame_count) > frame_count) {
+        // other loader already decoded newer frame
+        goto loop;
     }
+    context->frame = frame;
 
     // proc command
     switch(std::exchange(context->camera_command, Command::None)) {
@@ -82,37 +73,24 @@ loop:
         context->ui_command = Command::TakePhotoDone;
     } break;
     case Command::StartRecording: {
-        /*
-if(fmt.pixelformat != v4l2::fourcc("MJPG")) {
-print("currently movie is only supported in mpeg format");
-break;
-}
-auto path = file_manager->get_next_path().string();
-std::filesystem::create_directories(path);
-if(event_fifo) {
-event_fifo->send_event(RemoteEvents::RecordStart{path});
-}
-record_context.emplace(std::move(path), AV_PIX_FMT_YUV422P, width, height);
-*/
+        auto path = file_manager->get_next_path().string() + ".mkv";
+        unwrap_ob(pix_fmt, frame->get_pixel_format());
+        auto rc = std::unique_ptr<RecordContext>(new RecordContext(path, pix_fmt, width, height));
+        assert_b(rc->encoder.init());
+        record_context.reset(rc.release());
         context->ui_command = Command::StartRecordingDone;
     } break;
     case Command::StopRecording: {
-        /*
-if(fmt.pixelformat != v4l2::fourcc("MJPG")) {
-break;
-}
-if(event_fifo) {
-const auto path = std::move(record_context->tempdir);
-record_context.reset();
-event_fifo->send_event(RemoteEvents::RecordStop{path});
-} else {
-record_context.reset();
-}
-*/
+        record_context.reset();
         context->ui_command = Command::StopRecordingDone;
     } break;
     default:
         break;
+    }
+
+    if(const auto rc = record_context) {
+        unwrap_ob(planes, frame->get_planes(byte_array));
+        rc->encoder.add_frame(planes, rc->timer.elapsed<std::chrono::microseconds>());
     }
 
     goto loop;
@@ -122,8 +100,6 @@ auto Camera::worker_main() -> bool {
     auto fds      = std::array<pollfd, 1>();
     fds[0].fd     = fd;
     fds[0].events = POLLIN;
-
-    auto record_context = std::optional<RecordContext>();
 
     if(event_fifo) {
         event_fifo->send_event(RemoteEvents::Hello{});
@@ -143,23 +119,9 @@ loop:
     assert_b(poll(fds.data(), 1, 0) != -1);
     unwrap_ob(index, v4l2::dequeue_buffer(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE));
 
-    /*
-    // if recording, save elapsed time
-    if(record_context) {
-        record_context->save_duration();
-    }
-
-    // record frame
-    if(record_context) {
-        const auto frame = record_context->frame += 1;
-        const auto path  = build_string(record_context->tempdir, "/", frame, ".jpg");
-        save_jpeg_frame(path.data(), static_cast<const std::byte*>(buffers[index].start));
-        record_context->save_filename();
-    }
-    */
-
     loaders[index].event.wakeup();
 
+    // show fps
     loops += 1;
     if(timer.elapsed<std::chrono::milliseconds>() >= 1000) {
         print(loops, " fps");
@@ -173,7 +135,12 @@ loop:
 auto Camera::run() -> void {
     running = true;
     for(auto i = 0u; i < loaders.size(); i += 1) {
-        loaders[i].thread = std::thread(&Camera::loader_main, this, i);
+        loaders[i].thread = std::thread([this, i]() {
+            if(!Camera::loader_main(i)) {
+                // TODO: find better error handling
+                std::exit(1);
+            }
+        });
     }
     worker = std::thread(&Camera::worker_main, this);
 }

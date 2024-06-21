@@ -1,8 +1,10 @@
 #pragma once
 #include "../context.hpp"
+#include "../encoder/encoder.hpp"
 #include "../file.hpp"
 #include "../gawl/wayland/window.hpp"
 #include "../remote-server.hpp"
+#include "../timer.hpp"
 #include "../util/event.hpp"
 #include "../v4l2.hpp"
 
@@ -10,6 +12,13 @@ constexpr auto num_buffers = 4;
 
 class Camera {
   private:
+    struct RecordContext {
+        ff::Encoder encoder;
+        Timer       timer;
+
+        RecordContext(std::string path, AVPixelFormat pix_fmt, int width, int height);
+    };
+
     struct Loader {
         Event       event;
         std::thread thread;
@@ -19,6 +28,7 @@ class Camera {
     gawl::WaylandWindow*            window;
     const FileManager*              file_manager;
     Context*                        context;
+    std::shared_ptr<RecordContext>  record_context;
     RemoteServer*                   event_fifo;
     std::thread                     worker;
     std::array<Loader, num_buffers> loaders;
