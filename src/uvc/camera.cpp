@@ -97,7 +97,7 @@ loop:
     case v4l2::fourcc("NV12"): {
         const auto buf    = std::bit_cast<std::byte*>(buffers[index].start);
         const auto stride = fmt.bytesperline;
-        auto       img    = std::shared_ptr<GraphicLike>(new GraphicLike(Tag<YUV420spGraphic>(), width, height, stride, buf, buf + stride * height));
+        img.reset(new GraphicLike(Tag<YUV420spGraphic>(), width, height, stride, buf, buf + stride * height));
     } break;
     }
     assert_b(v4l2::queue_buffer(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, index));
