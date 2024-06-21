@@ -42,6 +42,11 @@ auto WindowCallbacks::refresh() -> void {
 }
 
 auto WindowCallbacks::on_click(const uint32_t button, const gawl::ButtonState state) -> void {
+    if(button == BTN_RIGHT && state == gawl::ButtonState::Press) {
+        movie = !movie;
+        printf("movie: %d\n", movie);
+    }
+
     if(button != BTN_LEFT) {
         return;
     }
