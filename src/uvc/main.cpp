@@ -57,7 +57,6 @@ auto run(const int argc, const char* const argv[]) -> bool {
     case v4l2::fourcc("MJPG"):
         init_planar_shader();
         break;
-        V4L2_PIX_FMT_YUV420;
     case v4l2::fourcc("YUYV"):
         init_yuv422i_shader();
         break;
