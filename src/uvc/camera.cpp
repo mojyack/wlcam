@@ -11,7 +11,7 @@ auto Camera::RecordContext::init(std::string path, const AVPixelFormat pix_fmt, 
         .video  = ff::VideoParams{
              .codec = {
                  .name    = params.video_codec,
-                 .options = {},
+                 .options = {}, // TODO: make configurable
             },
              .pix_fmt = pix_fmt,
              .width   = int(params.width),
