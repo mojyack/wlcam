@@ -147,25 +147,18 @@ auto Camera::worker_main() -> bool {
     fds[0].fd     = params.fd;
     fds[0].events = POLLIN;
 
-    auto timer = Timer();
-    auto loops = 0;
+    auto timer = FPSTimer();
 
 loop:
     if(!running) {
         return true;
     }
+
     assert_b(poll(fds.data(), 1, 0) != -1);
     unwrap_ob(index, v4l2::dequeue_buffer(params.fd, V4L2_BUF_TYPE_VIDEO_CAPTURE));
-
     loaders[index].event.wakeup();
 
-    // show fps
-    loops += 1;
-    if(timer.elapsed<std::chrono::milliseconds>() >= 1000) {
-        print(loops, " fps");
-        timer.reset();
-        loops = 0;
-    }
+    timer.tick();
 
     goto loop;
 }

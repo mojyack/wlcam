@@ -1,6 +1,8 @@
 #pragma once
 #include <chrono>
 
+#include "util/print.hpp"
+
 class Timer {
   private:
     std::chrono::steady_clock::time_point time;
@@ -18,5 +20,22 @@ class Timer {
 
     Timer() {
         reset();
+    }
+};
+
+class FPSTimer {
+  private:
+    Timer timer;
+    int   count = 0;
+
+  public:
+    auto tick() -> void {
+        count += 1;
+        if(timer.elapsed<std::chrono::milliseconds>() < 1000) {
+            return;
+        }
+        print("fps: ", count);
+        timer.reset();
+        count = 0;
     }
 };

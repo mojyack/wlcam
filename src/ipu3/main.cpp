@@ -6,6 +6,7 @@
 #include "../gawl/wayland/application.hpp"
 #include "../macros/unwrap.hpp"
 #include "../media-device.hpp"
+#include "../timer.hpp"
 #include "../udev.hpp"
 #include "../util/assert.hpp"
 #include "../v4l2.hpp"
@@ -182,6 +183,8 @@ auto run(const int argc, const char* const argv[]) -> bool {
             print("ipu3 lens ", cio2_0.sensor.lens->dev_node);
         }
 
+        auto timer = FPSTimer();
+
     loop:
         if(!running) {
             return true;
@@ -229,6 +232,9 @@ auto run(const int argc, const char* const argv[]) -> bool {
 
         // release buffer to system
         assert_b(v4l2::queue_buffer_mp(cio2_output_fd, capbuf_mp, V4L2_MEMORY_DMABUF, i, &cio2_output_buffers[i], 1));
+
+        timer.tick();
+
         goto loop;
     });
 
