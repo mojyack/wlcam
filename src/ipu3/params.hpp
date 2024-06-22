@@ -49,4 +49,3 @@ struct ParamsCallbacks : public vcw::UserCallbacks {
 
 auto init_params_buffer(ipu3_uapi_params& params, const algo::PipeConfig& pipe_config, const ipu3_uapi_grid_config& bds_grid) -> void;
 auto create_control_rows() -> std::vector<vcw::Row>;
-auto apply_controls(ipu3_uapi_params** params_array, size_t params_array_size, Control& control, int value) -> void;
