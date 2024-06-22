@@ -6,6 +6,7 @@
 #include "../gawl/wayland/application.hpp"
 #include "../macros/unwrap.hpp"
 #include "../media-device.hpp"
+#include "../record-context.hpp"
 #include "../timer.hpp"
 #include "../udev.hpp"
 #include "../util/assert.hpp"
@@ -161,6 +162,7 @@ auto run(const int argc, const char* const argv[]) -> bool {
     params_callbacks->params_array      = params_mmap_ptrs.data();
     params_callbacks->params_array_size = params_mmap_ptrs.size();
     auto vcw_callbacks                  = std::shared_ptr<vcw::Callbacks>(new vcw::Callbacks(control_rows, params_callbacks));
+
     // apply initial parameters
     for(const auto& [key, value] : args.ipu3_params) {
         auto found = false;
@@ -189,6 +191,7 @@ auto run(const int argc, const char* const argv[]) -> bool {
     auto camera_thread = std::thread([&]() -> bool {
         auto       window_context = wlwindow->fork_context();
         auto       file_manager   = FileManager(args.savedir);
+        auto       record_context = std::unique_ptr<RecordContext>();
         const auto output_width   = imgu_output_fmt.fmt.pix_mp.width;
         const auto output_height  = imgu_output_fmt.fmt.pix_mp.height;
         const auto output_stride  = imgu_output_fmt.fmt.pix_mp.plane_fmt[0].bytesperline;
@@ -243,8 +246,28 @@ auto run(const int argc, const char* const argv[]) -> bool {
 
             context.ui_command = Command::TakePhotoDone;
         } break;
+        case Command::StartRecording: {
+            const auto path = file_manager.get_next_path().string() + ".mkv";
+
+            unwrap_ob(pix_fmt, frame->get_pixel_format());
+            auto rc = std::unique_ptr<RecordContext>(new RecordContext());
+            assert_b(rc->init(path, pix_fmt, args));
+            record_context.reset(rc.release());
+
+            context.ui_command = Command::StartRecordingDone;
+        } break;
+        case Command::StopRecording: {
+            record_context.reset();
+
+            context.ui_command = Command::StopRecordingDone;
+        } break;
         default:
             break;
+        }
+
+        if(record_context) {
+            unwrap_ob(planes, frame->get_planes(byte_array));
+            record_context->encoder.add_frame(planes, record_context->timer.elapsed<std::chrono::microseconds>());
         }
 
         // update displayed image
