@@ -44,9 +44,8 @@ auto run(const int argc, const char* const argv[]) -> bool {
     }
     assert_b(v4l2::start_stream(fd));
 
-    const auto file_manager = FileManager(args.savedir);
-    auto       context      = Context();
-    auto       event_fifo   = args.event_fifo != nullptr ? RemoteServer(args.event_fifo) : RemoteServer();
+    auto file_manager = FileManager(args.savedir);
+    auto context      = Context();
 
     auto       callbacks = std::shared_ptr<UVCWindowCallbacks>(new UVCWindowCallbacks(context));
     auto       app       = gawl::WaylandApplication();
@@ -69,7 +68,21 @@ auto run(const int argc, const char* const argv[]) -> bool {
     }
 
     unwrap_ob(fmt, v4l2::get_current_format(fd));
-    auto camera    = Camera(fd, buffers.data(), fmt.width, fmt.height, args.fps, *wlwindow, file_manager, context, args.event_fifo ? &event_fifo : nullptr);
+    auto camera    = Camera(CameraParams{
+           .fd                = fd,
+           .width             = fmt.width,
+           .height            = fmt.height,
+           .fps               = args.fps,
+           .buffers           = buffers.data(),
+           .window            = wlwindow,
+           .file_manager      = &file_manager,
+           .context           = &context,
+           .video_codec       = args.video_codec,
+           .audio_codec       = args.audio_codec,
+           .video_filter      = args.video_filter,
+           .audio_sample_rate = args.audio_sample_rate,
+           .ffmpeg_debug      = args.ffmpeg_debug,
+    });
     callbacks->cam = &camera;
 
     camera.run();

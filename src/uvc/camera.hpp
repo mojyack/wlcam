@@ -5,12 +5,27 @@
 #include "../file.hpp"
 #include "../gawl/wayland/window.hpp"
 #include "../pulse/pulse.hpp"
-#include "../remote-server.hpp"
 #include "../timer.hpp"
 #include "../util/event.hpp"
 #include "../v4l2.hpp"
 
 constexpr auto num_buffers = 4;
+
+struct CameraParams {
+    int                  fd;
+    uint32_t             width;
+    uint32_t             height;
+    uint32_t             fps;
+    v4l2::Buffer*        buffers;
+    gawl::WaylandWindow* window;
+    FileManager*         file_manager;
+    Context*             context;
+    const char*          video_codec;
+    const char*          audio_codec;
+    const char*          video_filter;
+    uint32_t             audio_sample_rate;
+    bool                 ffmpeg_debug;
+};
 
 class Camera {
   private:
@@ -23,7 +38,7 @@ class Camera {
         bool               running;
 
         auto recorder_main() -> bool;
-        auto init(std::string path, AVPixelFormat pix_fmt, int width, int height, int sample_rate) -> bool;
+        auto init(std::string path, AVPixelFormat pix_fmt, const CameraParams& params) -> bool;
 
         ~RecordContext();
     };
@@ -33,21 +48,13 @@ class Camera {
         std::thread thread;
     };
 
-    v4l2::Buffer*                   buffers;
-    gawl::WaylandWindow*            window;
-    const FileManager*              file_manager;
-    Context*                        context;
+    CameraParams                    params;
     std::shared_ptr<RecordContext>  record_context;
-    RemoteServer*                   event_fifo;
     std::thread                     worker;
     std::array<Loader, num_buffers> loaders;
     std::atomic_size_t              current_frame_count = 0;
     std::atomic_size_t              front_frame_count   = 0;
-    int                             fd;
-    uint32_t                        width;
-    uint32_t                        height;
-    uint32_t                        fps;
-    bool                            running = false;
+    bool                            running             = false;
 
     auto loader_main(size_t index) -> bool;
     auto worker_main() -> bool;
@@ -56,6 +63,6 @@ class Camera {
     auto run() -> void;
     auto shutdown() -> void;
 
-    Camera(int fd, v4l2::Buffer* buffers, uint32_t width, uint32_t height, uint32_t fps, gawl::WaylandWindow& window, const FileManager& file_manager, Context& context, RemoteServer* event_fifo);
+    Camera(CameraParams params);
     ~Camera();
 };
