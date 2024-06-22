@@ -6,21 +6,66 @@
 #include "../util/assert.hpp"
 #include "camera.hpp"
 
-Camera::RecordContext::RecordContext(std::string path, const AVPixelFormat pix_fmt, const int width, const int height)
-    : encoder(ff::EncoderParams{
-          .output = std::move(path),
-          .video  = ff::VideoParams{
-               .codec = {
-                   .name = "h264_vaapi",
-                  // .name = "libx264",
-              },
-               .pix_fmt = pix_fmt,
-               .width   = width,
-               .height  = height,
-              // .threads = 1,
-          },
-          .ffmpeg_debug = true,
-      }) {}
+auto Camera::RecordContext::init(std::string path, const AVPixelFormat pix_fmt, const int width, const int height, const int sample_rate) -> bool {
+    auto encoder_params = ff::EncoderParams{
+        .output = std::move(path),
+        .video  = ff::VideoParams{
+             .codec = {
+                 .name = "h264_vaapi",
+                // .name = "libx264",
+            },
+             .pix_fmt = pix_fmt,
+             .width   = width,
+             .height  = height,
+            // .threads = 1,
+             .filter = "format=nv12",
+        },
+        .audio = ff::AudioParams{
+            .codec = {
+                .name    = "aac",
+                .options = {},
+            },
+            .sample_fmt     = AV_SAMPLE_FMT_FLTP,
+            .sample_rate    = sample_rate,
+            .channel_layout = AV_CHANNEL_LAYOUT_STEREO,
+        },
+        .ffmpeg_debug = true,
+    };
+    assert_b(encoder.init(std::move(encoder_params)));
+
+    auto recorder_params = pa::Params{
+        .sample_format    = pa_parse_sample_format("float32"),
+        .sample_rate      = uint32_t(sample_rate),
+        .samples_per_read = uint32_t(encoder.get_audio_samples_per_push()),
+    };
+    assert_b(recorder.init(std::move(recorder_params)));
+
+    assert_b(converter.init({sample_rate, AV_SAMPLE_FMT_FLT, AV_CH_LAYOUT_STEREO}, {sample_rate, AV_SAMPLE_FMT_FLTP, AV_CH_LAYOUT_STEREO}));
+
+    running         = true;
+    recorder_thread = std::thread(&RecordContext::recorder_main, this);
+
+    return true;
+}
+
+auto Camera::RecordContext::recorder_main() -> bool {
+    const auto num_samples_per_push = encoder.get_audio_samples_per_push();
+loop:
+    if(!running) {
+        return true;
+    }
+    const auto samples = recorder.read_buffer();
+    assert_b(samples);
+    const auto frame = converter.convert(samples->data(), num_samples_per_push);
+    assert_b(frame);
+    encoder.add_audio(frame->get());
+    goto loop;
+}
+
+Camera::RecordContext::~RecordContext() {
+    running = false;
+    recorder_thread.join();
+}
 
 auto Camera::loader_main(const size_t index) -> bool {
     unwrap_ob(fmt, v4l2::get_current_format(fd));
@@ -75,8 +120,8 @@ loop:
     case Command::StartRecording: {
         auto path = file_manager->get_next_path().string() + ".mkv";
         unwrap_ob(pix_fmt, frame->get_pixel_format());
-        auto rc = std::unique_ptr<RecordContext>(new RecordContext(path, pix_fmt, width, height));
-        assert_b(rc->encoder.init());
+        auto rc = std::unique_ptr<RecordContext>(new RecordContext());
+        assert_b(rc->init(path, pix_fmt, width, height, 48000));
         record_context.reset(rc.release());
         context->ui_command = Command::StartRecordingDone;
     } break;

@@ -188,7 +188,8 @@ auto Encoder::init_codecs() -> bool {
     return true;
 }
 
-auto Encoder::init() -> bool {
+auto Encoder::init(EncoderParams params_) -> bool {
+    params    = std::move(params_);
     use_vaapi = params.video && params.video->codec.name.find("vaapi") != std::string::npos;
 
     if(params.ffmpeg_debug) {
@@ -289,10 +290,6 @@ auto Encoder::add_audio(const std::span<const std::byte* const> buffers) -> bool
     frame->nb_samples  = audio_codec_context->frame_size;
 
     return add_audio(frame.get());
-}
-
-Encoder::Encoder(EncoderParams params)
-    : params(std::move(params)) {
 }
 
 Encoder::~Encoder() {

@@ -26,9 +26,7 @@ class Recorder {
     uint8_t      sample_format_size;
 
   public:
-    auto init() -> bool;
+    auto init(Params params) -> bool;
     auto read_buffer() -> std::optional<std::vector<std::byte>>;
-
-    Recorder(Params params);
 };
 } // namespace pa

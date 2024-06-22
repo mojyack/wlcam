@@ -4,7 +4,10 @@
 #include "util/assert.hpp"
 
 namespace ff {
-auto AudioConverter::init() -> bool {
+auto AudioConverter::init(Format from_, Format to_) -> bool {
+    from = from_;
+    to   = to_;
+
     assert_b(av_channel_layout_from_mask(&from_channel, from.channel_layout_mask) == 0);
     assert_b(av_channel_layout_from_mask(&to_channel, to.channel_layout_mask) == 0);
 
@@ -41,10 +44,5 @@ auto AudioConverter::convert(const std::byte* const buffer, const size_t buffer_
 
     assert_o(swr_convert_frame(swr_ctx.get(), outputf.get(), inputf.get()) == 0);
     return outputf;
-}
-
-AudioConverter::AudioConverter(Format from, Format to)
-    : from(from),
-      to(to) {
 }
 } // namespace ff

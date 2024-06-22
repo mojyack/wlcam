@@ -1,8 +1,10 @@
 #pragma once
 #include "../context.hpp"
+#include "../encoder/converter.hpp"
 #include "../encoder/encoder.hpp"
 #include "../file.hpp"
 #include "../gawl/wayland/window.hpp"
+#include "../pulse/pulse.hpp"
 #include "../remote-server.hpp"
 #include "../timer.hpp"
 #include "../util/event.hpp"
@@ -13,10 +15,17 @@ constexpr auto num_buffers = 4;
 class Camera {
   private:
     struct RecordContext {
-        ff::Encoder encoder;
-        Timer       timer;
+        ff::Encoder        encoder;
+        ff::AudioConverter converter;
+        pa::Recorder       recorder;
+        Timer              timer;
+        std::thread        recorder_thread;
+        bool               running;
 
-        RecordContext(std::string path, AVPixelFormat pix_fmt, int width, int height);
+        auto recorder_main() -> bool;
+        auto init(std::string path, AVPixelFormat pix_fmt, int width, int height, int sample_rate) -> bool;
+
+        ~RecordContext();
     };
 
     struct Loader {

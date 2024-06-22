@@ -8,6 +8,7 @@ graphics_files = files(
 )
 
 subdir('src/encoder')
+subdir('src/pulse')
 subdir('src/gawl')
 
 gawl_files = gawl_core_files + gawl_graphic_files + gawl_no_touch_callbacks_file

@@ -27,9 +27,7 @@ class AudioConverter {
     size_t          processed_samples = 0;
 
   public:
-    auto init() -> bool;
+    auto init(Format from, Format to) -> bool;
     auto convert(const std::byte* buffer, size_t buffer_samples) -> std::optional<AutoAVFrame>;
-
-    AudioConverter(Format from, Format to);
 };
 } // namespace ff

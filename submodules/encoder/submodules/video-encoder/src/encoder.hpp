@@ -36,9 +36,9 @@ struct VideoParams {
     int           height;
     int           b_frames = 3;
     int           threads  = 0;
+    std::string   filter   = "";
 
     // vaapi
-    std::string filter      = "";
     std::string render_node = ""; // something like /dev/dri/renderD128
 };
 
@@ -97,13 +97,12 @@ class Encoder {
     auto push_frame(AutoAVFrame frame, int usec) -> bool;
 
   public:
-    auto init() -> bool;
+    auto init(EncoderParams params) -> bool;
     auto add_frame(std::span<const Plane> planes, int usec) -> bool;
     auto get_audio_samples_per_push() const -> size_t;
     auto add_audio(AVFrame* frame) -> bool;
     auto add_audio(std::span<const std::byte* const> buffers) -> bool;
 
-    Encoder(EncoderParams params);
     ~Encoder();
 };
 } // namespace ff

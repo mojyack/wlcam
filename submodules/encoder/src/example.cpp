@@ -48,11 +48,11 @@ auto main(const int argc, const char* const argv[]) -> int {
         params.video->codec.name = "h264_vaapi";
     }
 
-    auto encoder = ff::Encoder(std::move(params));
-    assert_v(encoder.init(), 1);
+    auto encoder = ff::Encoder();
+    assert_v(encoder.init(std::move(params)), 1);
 
-    auto converter = ff::AudioConverter({sample_rate, AV_SAMPLE_FMT_FLT, AV_CH_LAYOUT_STEREO}, {sample_rate, AV_SAMPLE_FMT_FLTP, AV_CH_LAYOUT_STEREO});
-    assert_v(converter.init(), 1);
+    auto converter = ff::AudioConverter();
+    assert_v(converter.init({sample_rate, AV_SAMPLE_FMT_FLT, AV_CH_LAYOUT_STEREO}, {sample_rate, AV_SAMPLE_FMT_FLTP, AV_CH_LAYOUT_STEREO}), 1);
 
     auto buf1 = std::vector<std::byte>(width * height);
     auto buf2 = std::vector<std::byte>(width * height);
@@ -77,12 +77,13 @@ auto main(const int argc, const char* const argv[]) -> int {
 
     const auto num_samples_per_push = encoder.get_audio_samples_per_push();
 
-    auto recorder = pa::Recorder(pa::Params{
+    auto recorder_params = pa::Params{
         .sample_format    = pa_parse_sample_format("float32"),
         .sample_rate      = sample_rate,
         .samples_per_read = uint32_t(num_samples_per_push),
-    });
-    assert_v(recorder.init(), 1);
+    };
+    auto recorder = pa::Recorder();
+    assert_v(recorder.init(std::move(recorder_params)), 1);
 
     for(auto i = 0u; i < duration * sample_rate / num_samples_per_push; i += 1) {
         const auto samples = recorder.read_buffer();

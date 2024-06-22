@@ -6,7 +6,9 @@
 namespace pa {
 constexpr auto channels = 2;
 
-auto Recorder::init() -> bool {
+auto Recorder::init(Params params_) -> bool {
+    params = std::move(params_);
+
     sample_format_size = pa_sample_size_of_format(params.sample_format);
 
     auto map = pa_channel_map();
@@ -33,9 +35,5 @@ auto Recorder::read_buffer() -> std::optional<std::vector<std::byte>> {
     auto buf = std::vector<std::byte>(params.samples_per_read * channels * sample_format_size);
     assert_o(pa_simple_read(pa.get(), buf.data(), buf.size(), NULL) == 0);
     return buf;
-}
-
-Recorder::Recorder(Params params)
-    : params(std::move(params)) {
 }
 } // namespace pa
