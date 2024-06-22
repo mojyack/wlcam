@@ -14,7 +14,9 @@ subdir('src/gawl')
 gawl_files = gawl_core_files + gawl_graphic_files + gawl_no_touch_callbacks_file
 gawl_deps = gawl_core_deps + gawl_graphic_deps
 
-subdir('src/uvc')
+if get_option('uvc')
+  subdir('src/uvc')
+endif
 
 if get_option('ipu3')
   subdir('src/ipu3')
