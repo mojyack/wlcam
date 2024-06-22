@@ -12,7 +12,6 @@ ipu3_files = files(
   '../file.cpp',
   '../jpeg.cpp',
   '../media-device.cpp',
-  '../remote-server.cpp',
   '../udev.cpp',
   '../v4l2.cpp',
   '../window.cpp',

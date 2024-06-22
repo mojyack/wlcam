@@ -6,7 +6,6 @@
 #include "../gawl/wayland/application.hpp"
 #include "../macros/unwrap.hpp"
 #include "../media-device.hpp"
-#include "../remote-server.hpp"
 #include "../udev.hpp"
 #include "../util/assert.hpp"
 #include "../v4l2.hpp"

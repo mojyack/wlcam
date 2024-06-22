@@ -4,7 +4,6 @@ uvc_files = files(
   'camera.cpp',
   'main.cpp',
   '../file.cpp',
-  '../remote-server.cpp',
   '../jpeg.cpp',
   '../v4l2.cpp',
   '../window.cpp',
