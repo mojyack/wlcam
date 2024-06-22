@@ -17,6 +17,7 @@ ipu3_files = files(
   '../v4l2.cpp',
   '../window.cpp',
   '../yuv.cpp',
+  '../graphics-wrapper.cpp',
   '../vcw/window.cpp',
 ) + graphics_files + gawl_files + gawl_textrender_files + gawl_fc_files
 

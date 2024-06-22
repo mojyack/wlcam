@@ -199,8 +199,9 @@ auto run(const int argc, const char* const argv[]) -> bool {
             assert_b(v4l2::dequeue_buffer(imgu_stat_fd, capbuf_meta));
             assert_b(v4l2::dequeue_buffer_mp(imgu_input_fd, outbuf_mp, V4L2_MEMORY_DMABUF));
 
-            const auto vf_buf = std::bit_cast<std::byte*>(vf_mmap_ptrs[i]);
-            auto       img    = std::shared_ptr<GraphicLike>(new GraphicLike(Tag<YUV420spGraphic>(), vf_width, vf_height, vf_stride, vf_buf, vf_buf + vf_stride * vf_height));
+            auto       frame      = std::shared_ptr<Frame>(new YUV420SPFrame(vf_width, vf_height, vf_stride));
+            const auto byte_array = Frame::ByteArray{static_cast<std::byte*>(vf_mmap_ptrs[i]), imgu_vf_buffers[i].length};
+            assert_b(frame->load_texture(byte_array));
 
             // proc commands while flushing texture
             switch(std::exchange(context.camera_command, Command::None)) {
@@ -222,7 +223,7 @@ auto run(const int argc, const char* const argv[]) -> bool {
             }
 
             window_context.flush();
-            std::swap(context.critical_graphic, img);
+            context.frame = frame;
 
             assert_b(v4l2::queue_buffer_mp(cio2_output_fd, capbuf_mp, V4L2_MEMORY_DMABUF, i, &cio2_output_buffers[i], 1));
         }
