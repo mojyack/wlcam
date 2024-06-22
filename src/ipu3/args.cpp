@@ -80,6 +80,9 @@ auto parse_args(const int argc, const char* const argv[]) -> std::optional<Args>
             assert_o(increment(i));
             unwrap_oo(value, from_chars<int>(argv[i]));
             args.ipu3_params.emplace_back(key, value);
+        } else {
+            WARN("unknown option ", argv[i]);
+            return std::nullopt;
         }
     }
 
