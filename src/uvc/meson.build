@@ -10,6 +10,7 @@ uvc_files = files(
   '../yuv.cpp',
   '../graphics-wrapper.cpp',
   '../args.cpp',
+  '../record-context.cpp',
   '../encoder/encoder.cpp',
   '../encoder/converter.cpp',
   '../pulse/pulse.cpp',

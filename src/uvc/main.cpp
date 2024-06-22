@@ -69,19 +69,15 @@ auto run(const int argc, const char* const argv[]) -> bool {
 
     unwrap_ob(fmt, v4l2::get_current_format(fd));
     auto camera    = Camera(CameraParams{
-           .fd                = fd,
-           .width             = fmt.width,
-           .height            = fmt.height,
-           .fps               = args.fps,
-           .buffers           = buffers.data(),
-           .window            = wlwindow,
-           .file_manager      = &file_manager,
-           .context           = &context,
-           .video_codec       = args.video_codec,
-           .audio_codec       = args.audio_codec,
-           .video_filter      = args.video_filter,
-           .audio_sample_rate = args.audio_sample_rate,
-           .ffmpeg_debug      = args.ffmpeg_debug,
+           .fd           = fd,
+           .width        = fmt.width,
+           .height       = fmt.height,
+           .fps          = args.fps,
+           .buffers      = buffers.data(),
+           .window       = wlwindow,
+           .file_manager = &file_manager,
+           .context      = &context,
+           .args         = &args,
     });
     callbacks->cam = &camera;
 

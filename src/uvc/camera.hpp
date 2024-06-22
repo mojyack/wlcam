@@ -1,10 +1,8 @@
 #pragma once
 #include "../context.hpp"
-#include "../encoder/converter.hpp"
-#include "../encoder/encoder.hpp"
 #include "../file.hpp"
 #include "../gawl/wayland/window.hpp"
-#include "../pulse/pulse.hpp"
+#include "../record-context.hpp"
 #include "../timer.hpp"
 #include "../util/event.hpp"
 #include "../v4l2.hpp"
@@ -20,29 +18,11 @@ struct CameraParams {
     gawl::WaylandWindow* window;
     FileManager*         file_manager;
     Context*             context;
-    const char*          video_codec;
-    const char*          audio_codec;
-    const char*          video_filter;
-    uint32_t             audio_sample_rate;
-    bool                 ffmpeg_debug;
+    const CommonArgs*    args;
 };
 
 class Camera {
   private:
-    struct RecordContext {
-        ff::Encoder        encoder;
-        ff::AudioConverter converter;
-        pa::Recorder       recorder;
-        Timer              timer;
-        std::thread        recorder_thread;
-        bool               running;
-
-        auto recorder_main() -> bool;
-        auto init(std::string path, AVPixelFormat pix_fmt, const CameraParams& params) -> bool;
-
-        ~RecordContext();
-    };
-
     struct Loader {
         Event       event;
         std::thread thread;
