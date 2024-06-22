@@ -287,7 +287,7 @@ auto run(const int argc, const char* const argv[]) -> bool {
     running = false;
     camera_thread.join();
 
-    return 0;
+    return true;
 }
 
 auto main(const int argc, const char* const argv[]) -> int {
