@@ -101,7 +101,7 @@ loop:
         return false;
     }
     const auto byte_array = Frame::ByteArray{static_cast<std::byte*>(params.buffers[index].start), params.buffers[index].length};
-    frame->load_texture(byte_array);
+    assert_b(frame->load_texture(byte_array));
     assert_b(v4l2::queue_buffer(params.fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, index));
     window_context.flush();
 
