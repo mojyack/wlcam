@@ -19,7 +19,9 @@ options:
   --sensor-width WIDTH         (device profile)
   --sensor-height HEIGHT       (device profile)
   --width  WIDTH               horizontal resolution
-  --height HEIGHT vertical     resolution
+  --height HEIGHT              vertical resolution
+  --param KEY VALUE            ipu3 parameter, wb_gains.r, gamma, etc.
+                               this argument can be specified multiple times.
 )str";
 } // namespace
 
@@ -72,6 +74,12 @@ auto parse_args(const int argc, const char* const argv[]) -> std::optional<Args>
             assert_o(increment(i));
             unwrap_oo(num, from_chars<int>(argv[i]));
             args.height = num;
+        } else if(arg == "--param") {
+            assert_o(increment(i));
+            const auto key = argv[i];
+            assert_o(increment(i));
+            unwrap_oo(value, from_chars<int>(argv[i]));
+            args.ipu3_params.emplace_back(key, value);
         }
     }
 

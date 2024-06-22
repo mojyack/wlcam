@@ -161,6 +161,26 @@ auto run(const int argc, const char* const argv[]) -> bool {
     params_callbacks->params_array      = params_mmap_ptrs.data();
     params_callbacks->params_array_size = params_mmap_ptrs.size();
     auto vcw_callbacks                  = std::shared_ptr<vcw::Callbacks>(new vcw::Callbacks(control_rows, params_callbacks));
+    // apply initial parameters
+    for(const auto& [key, value] : args.ipu3_params) {
+        auto found = false;
+        for(const auto& row : control_rows) {
+            auto ptr = row.get<vcw::ControlPtr>();
+            if(ptr == nullptr) {
+                continue;
+            }
+            auto& ctrl = *ptr->get();
+            if(ctrl.get_label() != key) {
+                continue;
+            }
+            params_callbacks->set_control_value(ctrl, value);
+            found = true;
+            break;
+        }
+        if(!found) {
+            WARN("unknown parameter ", key);
+        }
+    }
     app.open_window({.title = "ipu3 parameters", .manual_refresh = true}, std::move(vcw_callbacks));
 
     init_yuv420sp_shader();

@@ -1,9 +1,10 @@
 #pragma once
 #include <optional>
+#include <vector>
 
 namespace ipu3 {
 struct Args {
-    const char* savedir    = nullptr;
+    const char* savedir = nullptr;
     const char* cio2_devnode;
     const char* imgu_devnode;
     const char* cio2_entity;
@@ -13,6 +14,8 @@ struct Args {
     int         sensor_height    = 0;
     int         width            = 0;
     int         height           = 0;
+
+    std::vector<std::pair<const char*, int>> ipu3_params;
 };
 
 auto parse_args(int argc, const char* const argv[]) -> std::optional<Args>;
