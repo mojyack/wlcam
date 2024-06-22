@@ -4,7 +4,6 @@
 
 #include "../file.hpp"
 #include "../gawl/wayland/application.hpp"
-#include "../jpeg.hpp"
 #include "../macros/unwrap.hpp"
 #include "../media-device.hpp"
 #include "../remote-server.hpp"
@@ -12,7 +11,6 @@
 #include "../util/assert.hpp"
 #include "../v4l2.hpp"
 #include "../window.hpp"
-#include "../yuv.hpp"
 #include "algorithm.hpp"
 #include "args.hpp"
 #include "cio2.hpp"
@@ -206,15 +204,11 @@ auto run(const int argc, const char* const argv[]) -> bool {
             // proc commands while flushing texture
             switch(std::exchange(context.camera_command, Command::None)) {
             case Command::TakePhoto: {
-                const auto buf   = std::bit_cast<std::byte*>(vf_mmap_ptrs[i]);
-                const auto path  = file_manager.get_next_path().string() + ".jpg";
-                const auto uvbuf = buf + output_stride * output_height;
-                yuv::yuv420sp_uvsp_to_uvp(uvbuf, ubuf.data(), vbuf.data(), output_width, output_height, output_stride);
+                const auto path = file_manager.get_next_path().string() + ".jpg";
 
-                unwrap_ob(jpeg, jpg::encode_yuvp_to_jpeg(output_width, output_height, output_stride, 2, 2, buf, ubuf.data(), vbuf.data()));
-                const auto fd = FileDescriptor(open(path.c_str(), O_RDWR | O_CREAT, 0644));
-                assert_b(fd.as_handle() >= 0);
-                assert_b(write(fd.as_handle(), jpeg.buffer.get(), jpeg.size) == ssize_t(jpeg.size));
+                const auto byte_array = Frame::ByteArray{static_cast<std::byte*>(output_mmap_ptrs[i]), imgu_output_buffers[i].length};
+                auto       frame      = YUV420SPFrame(output_width, output_height, output_stride);
+                assert_b(frame.save_to_jpeg(byte_array, path));
 
                 context.ui_command = Command::TakePhotoDone;
             } break;
