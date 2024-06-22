@@ -21,7 +21,7 @@ class UVCWindowCallbacks : public WindowCallbacks {
 };
 
 auto run(const int argc, const char* const argv[]) -> bool {
-    unwrap_ob(args, parse_args(argc, argv));
+    unwrap_ob(args, Args::parse(argc, argv));
 
     const auto fdh = FileDescriptor(open(args.video_device, O_RDWR));
     const auto fd  = fdh.as_handle();

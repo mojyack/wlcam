@@ -6,83 +6,61 @@
 #include "args.hpp"
 
 namespace {
-const auto help = R"str(usage: wlcam-ipu3 [FLAG|OPTION]...
-flags:
-  -h, --help                   print this message
+const auto help = R"(usage: wlcam-ipu3 OPTIONS...
 options:
-  -o, --output PATH            output directory
-  --cio2 MEDIA_DEV             (device profile)  
-  --imgu MEDIA_DEV             (device profile)
-  --cio2-entity ENT_NAME       (device profile)
-  --imgu-entity ENT_NAME       (device profile)
-  --sensor-mbus-code MBUS_CODE (device profile)
-  --sensor-width WIDTH         (device profile)
-  --sensor-height HEIGHT       (device profile)
-  --width  WIDTH               horizontal resolution
-  --height HEIGHT              vertical resolution
-  --param KEY VALUE            ipu3 parameter, wb_gains.r, gamma, etc.
-                               this argument can be specified multiple times.
-)str";
+  -h, --help                    print this message
+  --cio2 MEDIA_DEV              (device profile)  
+  --imgu MEDIA_DEV              (device profile)
+  --cio2-entity ENT_NAME        (device profile)
+  --imgu-entity ENT_NAME        (device profile)
+  --sensor-mbus-code MBUS_CODE  (device profile)
+  --sensor-width WIDTH          (device profile)
+  --sensor-height HEIGHT        (device profile)
+  --param KEY VALUE             ipu3 parameter, wb_gains.r, gamma, etc.
+                                this argument can be specified multiple times.
+)";
 } // namespace
 
 namespace ipu3 {
-auto parse_args(const int argc, const char* const argv[]) -> std::optional<Args> {
-    auto args = Args();
+auto Args::parse(const int argc, const char* const argv[]) -> std::optional<Args> {
+    unwrap_oo(common, CommonArgs::parse(argc, argv));
 
-    const auto increment = [argc](int& i) -> bool {
-        i += 1;
-        return i < argc;
-    };
+    auto args   = Args(common);
+    auto i      = 1;
+    auto parser = ParseHelper{&i, argc, argv};
 
-    for(auto i = 1; i < argc; i += 1) {
+    for(i = 1; i < argc; i += 1) {
         const auto arg = std::string_view(argv[i]);
         if(arg == "-h" || arg == "--help") {
-            print(help);
+            print(help, common_flags_help);
             exit(0);
-        } else if(arg == "-o" || arg == "--output") {
-            assert_o(increment(i));
-            args.savedir = argv[i];
         } else if(arg == "--cio2") {
-            assert_o(increment(i));
+            assert_o(parser.increment());
             args.cio2_devnode = argv[i];
         } else if(arg == "--imgu") {
-            assert_o(increment(i));
+            assert_o(parser.increment());
             args.imgu_devnode = argv[i];
         } else if(arg == "--cio2-entity") {
-            assert_o(increment(i));
+            assert_o(parser.increment());
             args.cio2_entity = argv[i];
         } else if(arg == "--imgu-entity") {
-            assert_o(increment(i));
+            assert_o(parser.increment());
             args.imgu_entity = argv[i];
         } else if(arg == "--sensor-mbus-code") {
-            assert_o(increment(i));
-            unwrap_oo(num, from_chars<int>(argv[i]));
+            unwrap_oo(num, parser.get_int());
             args.sensor_mbus_code = num;
         } else if(arg == "--sensor-width") {
-            assert_o(increment(i));
-            unwrap_oo(num, from_chars<int>(argv[i]));
+            unwrap_oo(num, parser.get_int());
             args.sensor_width = num;
         } else if(arg == "--sensor-height") {
-            assert_o(increment(i));
-            unwrap_oo(num, from_chars<int>(argv[i]));
+            unwrap_oo(num, parser.get_int());
             args.sensor_height = num;
-        } else if(arg == "--width") {
-            assert_o(increment(i));
-            unwrap_oo(num, from_chars<int>(argv[i]));
-            args.width = num;
-        } else if(arg == "--height") {
-            assert_o(increment(i));
-            unwrap_oo(num, from_chars<int>(argv[i]));
-            args.height = num;
         } else if(arg == "--param") {
-            assert_o(increment(i));
+            assert_o(parser.increment());
             const auto key = argv[i];
-            assert_o(increment(i));
+            assert_o(parser.increment());
             unwrap_oo(value, from_chars<int>(argv[i]));
             args.ipu3_params.emplace_back(key, value);
-        } else {
-            WARN("unknown option ", argv[i]);
-            return std::nullopt;
         }
     }
 
@@ -94,8 +72,6 @@ auto parse_args(const int argc, const char* const argv[]) -> std::optional<Args>
     assert_o(args.sensor_mbus_code != 0, "no --sensor-mbus-code argument");
     assert_o(args.sensor_width != 0, "no --sensor-width argument");
     assert_o(args.sensor_height != 0, "no --sensor-height argument");
-    assert_o(args.width != 0, "no --width argument");
-    assert_o(args.height != 0, "no --height argument");
 
     return args;
 }
