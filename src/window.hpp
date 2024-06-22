@@ -7,7 +7,7 @@ class WindowCallbacks : public gawl::WindowNoTouchCallbacks {
   private:
     Context* context;
     int      shutter_anim = 0;
-    bool     movie        = true;
+    bool     movie        = false;
     bool     recording    = false;
 
   public:
