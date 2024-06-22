@@ -32,7 +32,7 @@ auto run() -> bool {
     auto csi2_devices = std::vector<MediaDevice>();
     auto imgu_devices = std::vector<MediaDevice>();
     for(const auto& [devnum, devnode] : udev_devices) {
-        if(major(devnum) != 246) {
+        if(major(devnum) != 245) {
             continue;
         }
 
