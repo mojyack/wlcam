@@ -58,7 +58,7 @@ auto run(const int argc, const char* const argv[]) -> bool {
     const auto cio2_output_fd = cio2_0.output.as_handle();
     assert_b(v4l2::set_format_subdev(cio2_sensor_fd, cio2_0.sensor.pad_index, args.sensor_mbus_code, args.sensor_width, args.sensor_height));
     assert_b(v4l2::set_format_subdev(cio2_fd, 0, args.sensor_mbus_code, args.sensor_width, args.sensor_height));
-    unwrap_ob(cio_output_fmt, v4l2::set_format_mp(cio2_output_fd, outbuf_mp, imgu_input_format, 1, args.sensor_width, args.sensor_height, nullptr));
+    unwrap_ob(cio_output_fmt, v4l2::set_format_mp(cio2_output_fd, capbuf_mp, imgu_input_format, 1, args.sensor_width, args.sensor_height, nullptr));
 
     const auto output     = algo::align_size({args.width, args.height});
     const auto viewfinder = algo::calculate_best_viewfinder(output, {1920, 1280}); // TODO: reflect window size
@@ -164,7 +164,7 @@ auto run(const int argc, const char* const argv[]) -> bool {
 
     init_yuv420sp_shader();
 
-    auto running       = false;
+    auto running       = true;
     auto camera_thread = std::thread([&]() -> bool {
         auto       window_context = wlwindow->fork_context();
         auto       file_manager   = FileManager(args.savedir);
@@ -234,9 +234,8 @@ auto run(const int argc, const char* const argv[]) -> bool {
 
     app.run();
 
-    running = true;
+    running = false;
     camera_thread.join();
-    std::quick_exit(0);
 
     return 0;
 }

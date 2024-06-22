@@ -73,6 +73,7 @@ auto parse_args(const int argc, const char* const argv[]) -> std::optional<Args>
             unwrap_oo(num, from_chars<int>(argv[i]));
             args.width = num;
         } else if(arg == "--height") {
+            assert_o(increment(i));
             unwrap_oo(num, from_chars<int>(argv[i]));
             args.height = num;
         }
