@@ -45,10 +45,6 @@ struct ParamsCallbacks : public vcw::UserCallbacks {
     size_t             params_array_size;
 
     auto set_control_value(vcw::Control& control, int value) -> void override;
-    // TODO
-    auto quit() -> void override {
-        std::quick_exit(0);
-    }
 };
 
 auto init_params_buffer(ipu3_uapi_params& params, const algo::PipeConfig& pipe_config, const ipu3_uapi_grid_config& bds_grid) -> void;
