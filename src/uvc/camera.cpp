@@ -52,19 +52,24 @@ loop:
     switch(std::exchange(params.context->camera_command, Command::None)) {
     case Command::TakePhoto: {
         const auto path = params.file_manager->get_next_path().string() + ".jpg";
+
         assert_b(frame->save_to_jpeg(byte_array, path));
+
         params.context->ui_command = Command::TakePhotoDone;
     } break;
     case Command::StartRecording: {
-        auto path = params.file_manager->get_next_path().string() + ".mkv";
+        const auto path = params.file_manager->get_next_path().string() + ".mkv";
+
         unwrap_ob(pix_fmt, frame->get_pixel_format());
         auto rc = std::unique_ptr<RecordContext>(new RecordContext());
         assert_b(rc->init(path, pix_fmt, *params.args));
         record_context.reset(rc.release());
+
         params.context->ui_command = Command::StartRecordingDone;
     } break;
     case Command::StopRecording: {
         record_context.reset();
+
         params.context->ui_command = Command::StopRecordingDone;
     } break;
     default:
