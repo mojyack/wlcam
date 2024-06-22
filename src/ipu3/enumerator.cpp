@@ -15,7 +15,7 @@
 namespace {
 auto read_sized(const std::string_view prompt, const size_t limit) -> size_t {
     while(true) {
-        print(prompt, ": [0..", limit - 1, "] ");
+        print(prompt, " [0..", limit - 1, "]: ");
         const auto i = stdio::read_stdin<size_t>();
         if(i < limit) {
             return i;
