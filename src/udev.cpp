@@ -34,7 +34,7 @@ auto enumerate() -> std::optional<std::unordered_map<dev_t, std::string>> {
 
         unwrap_po_mut(devnode, udev_device_get_devnode(dev.get()));
         const auto devnum = udev_device_get_devnum(dev.get());
-        ret[devnum]       = devnode;
+        ret[devnum]       = &devnode;
     }
 
     return ret;
