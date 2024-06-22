@@ -85,7 +85,7 @@ auto run(const int argc, const char* const argv[]) -> bool {
     app.run();
     camera.shutdown();
 
-    return 0;
+    return true;
 }
 
 auto main(const int argc, const char* const argv[]) -> int {
