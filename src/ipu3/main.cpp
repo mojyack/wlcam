@@ -182,6 +182,7 @@ auto run(const int argc, const char* const argv[]) -> bool {
         if(cio2_0.sensor.lens) {
             print("ipu3 lens ", cio2_0.sensor.lens->dev_node);
         }
+        print("ready");
 
         auto timer = FPSTimer();
 
