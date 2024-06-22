@@ -85,6 +85,7 @@ class Encoder {
     bool                  init_done = false;
     bool                  use_vaapi;
 
+    std::mutex format_lock;
     std::mutex video_encode_lock;
     std::mutex audio_encode_lock;
     std::mutex filter_lock;

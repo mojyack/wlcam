@@ -211,18 +211,22 @@ auto Encoder::init(EncoderParams params_) -> bool {
 }
 
 auto Encoder::encode(AVFrame* const frame, AVPacket* packet, bool video) -> bool {
-    const auto ctx    = video ? video_codec_context : audio_codec_context;
     const auto stream = video ? video_stream : audio_stream;
-    const auto guard  = std::lock_guard(video ? video_encode_lock : audio_encode_lock);
 
-    assert_b(avcodec_send_frame(ctx, frame) >= 0);
-    if(const auto ret = avcodec_receive_packet(ctx, packet); ret < 0) {
-        return ret == AVERROR(EAGAIN) || ret == AVERROR_EOF;
+    {
+        const auto ctx   = video ? video_codec_context : audio_codec_context;
+        const auto guard = std::lock_guard(video ? video_encode_lock : audio_encode_lock);
+        assert_b(avcodec_send_frame(ctx, frame) >= 0);
+        if(const auto ret = avcodec_receive_packet(ctx, packet); ret < 0) {
+            return ret == AVERROR(EAGAIN) || ret == AVERROR_EOF;
+        }
+        av_packet_rescale_ts(packet, ctx->time_base, stream->time_base);
     }
-
-    av_packet_rescale_ts(packet, ctx->time_base, stream->time_base);
     packet->stream_index = stream->index;
-    assert_b(av_interleaved_write_frame(format_context.get(), packet) >= 0);
+    {
+        const auto format_guard = std::lock_guard(format_lock);
+        assert_b(av_interleaved_write_frame(format_context.get(), packet) >= 0);
+    }
     return true;
 }
 
