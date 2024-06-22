@@ -153,7 +153,7 @@ auto run(const int argc, const char* const argv[]) -> bool {
 
     auto       window_callbacks = std::shared_ptr<IPU3WindowCallbacks>(new IPU3WindowCallbacks(context));
     auto       app              = gawl::WaylandApplication();
-    const auto window           = app.open_window({.title = "wlcam"}, window_callbacks);
+    const auto window           = app.open_window({.title = "wlcam"}, std::move(window_callbacks));
     const auto wlwindow         = std::bit_cast<gawl::WaylandWindow*>(window);
 
     auto control_rows                   = create_control_rows();
@@ -161,7 +161,7 @@ auto run(const int argc, const char* const argv[]) -> bool {
     params_callbacks->params_array      = params_mmap_ptrs.data();
     params_callbacks->params_array_size = params_mmap_ptrs.size();
     auto vcw_callbacks                  = std::shared_ptr<vcw::Callbacks>(new vcw::Callbacks(control_rows, params_callbacks));
-    app.open_window({.title = "ipu3 parameters", .manual_refresh = true}, vcw_callbacks);
+    app.open_window({.title = "ipu3 parameters", .manual_refresh = true}, std::move(vcw_callbacks));
 
     init_yuv420sp_shader();
 
