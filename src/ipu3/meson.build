@@ -1,5 +1,4 @@
 udev_dep = dependency('libudev')
-tj_dep = dependency('libturbojpeg')
 
 ipu3_files = files(
   'algorithm.cpp',

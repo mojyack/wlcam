@@ -1,4 +1,3 @@
-
 uvc_files = files(
   'args.cpp',
   'camera.cpp',
@@ -16,7 +15,7 @@ uvc_files = files(
   '../pulse/pulse.cpp',
 ) + graphics_files + gawl_files
 
-uvc_deps = [dependency('libturbojpeg')] + gawl_deps + video_encoder_deps + video_converter_deps + pulse_recorder_deps
+uvc_deps = [tj_dep] + gawl_deps + video_encoder_deps + video_converter_deps + pulse_recorder_deps
 
 executable('wlcam-uvc', uvc_files,
             dependencies : uvc_deps,
