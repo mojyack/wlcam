@@ -7,6 +7,8 @@
 #include "util/assert.hpp"
 #include "window.hpp"
 
+constexpr auto bottom_bar_height = 32;
+
 auto WindowCallbacks::refresh() -> void {
     // proc command
     constexpr auto shutter_anim_duration = 10;
@@ -26,9 +28,9 @@ auto WindowCallbacks::refresh() -> void {
 
     // render
     gawl::clear_screen({0, 0, 0, 0});
-    const auto [screen_width, screen_height] = window->get_window_size();
-    const auto screen_rect                   = gawl::Rectangle{{0, 0}, {1. * screen_width, 1. * screen_height}};
-    const auto frame                         = context->frame;
+    const auto [width, height] = window->get_window_size();
+    const auto screen_rect     = gawl::Rectangle{{0, 0}, {1. * width, 1. * height}};
+    const auto frame           = context->frame;
     if(frame) {
         frame->draw_fit_rect(*window, screen_rect);
     }
@@ -41,31 +43,43 @@ auto WindowCallbacks::refresh() -> void {
         shutter_anim -= 1;
     }
 
+    // status bar
+    const auto bar_rect = gawl::Rectangle{{0, 1. * height - bottom_bar_height}, screen_rect.b};
+    gawl::draw_rect(*window, bar_rect, {0, 0, 0, 0.7});
+    font.draw_fit_rect(*window, bar_rect, {1, 1, 1, 1}, movie ? "video" : "photo", 0, gawl::Align::Left, gawl::Align::Center);
+
     gawl::unmask_alpha();
 }
 
-auto WindowCallbacks::on_click(const uint32_t button, const gawl::ButtonState state) -> void {
-    if(button == BTN_RIGHT && state == gawl::ButtonState::Press) {
-        movie = !movie;
-        printf("movie: %d\n", movie);
-    }
+auto WindowCallbacks::on_pointer(const gawl::Point& pos) -> void {
+    cursor = pos;
+}
 
+auto WindowCallbacks::on_click(const uint32_t button, const gawl::ButtonState state) -> void {
     if(button != BTN_LEFT) {
         return;
     }
 
-    if(state == gawl::ButtonState::Press) {
-        if(movie) {
-            context->camera_command = recording ? Command::StopRecording : Command::StartRecording;
-        } else {
-            context->camera_command = Command::TakePhoto;
-        }
+    if(state != gawl::ButtonState::Press) {
+        return;
+    }
+
+    const auto [width, height] = window->get_window_size();
+    if(cursor.y >= height - bottom_bar_height) {
+        movie = !movie;
+        return;
+    }
+
+    if(movie) {
+        context->camera_command = recording ? Command::StopRecording : Command::StartRecording;
+    } else {
+        context->camera_command = Command::TakePhoto;
     }
 }
 
 auto WindowCallbacks::init() -> bool {
     unwrap_ob_mut(font_path, gawl::find_fontpath_from_name("Noto Sans CJK JP"));
-    font.init({std::move(font_path)}, 32);
+    font.init({std::move(font_path)}, bottom_bar_height * 0.8);
     return true;
 }
 
