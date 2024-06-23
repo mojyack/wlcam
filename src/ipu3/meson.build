@@ -24,9 +24,7 @@ ipu3_files = files(
   '../pulse/pulse.cpp',
 ) + graphics_files + gawl_files + gawl_textrender_files + gawl_fc_files
 
-ipu3_deps = [udev_dep, tj_dep] + gawl_deps + \
-  gawl_textrender_deps + gawl_fc_deps + \ # vcw
-  video_encoder_deps + video_converter_deps + pulse_recorder_deps # encoder
+ipu3_deps = [udev_dep, tj_dep] + gawl_deps + video_encoder_deps + video_converter_deps + pulse_recorder_deps
 
 ipu3_enumerator_files = files(
   'enumerator.cpp',

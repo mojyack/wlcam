@@ -47,10 +47,11 @@ auto run(const int argc, const char* const argv[]) -> bool {
     auto file_manager = FileManager(args.savedir);
     auto context      = Context();
 
-    auto       callbacks = std::shared_ptr<UVCWindowCallbacks>(new UVCWindowCallbacks(context));
-    auto       app       = gawl::WaylandApplication();
-    const auto window    = app.open_window({.title = "wlcam"}, callbacks);
-    const auto wlwindow  = std::bit_cast<gawl::WaylandWindow*>(window);
+    auto callbacks = std::shared_ptr<UVCWindowCallbacks>(new UVCWindowCallbacks(context));
+    assert_b(callbacks->init());
+    auto       app      = gawl::WaylandApplication();
+    const auto window   = app.open_window({.title = "wlcam"}, callbacks);
+    const auto wlwindow = std::bit_cast<gawl::WaylandWindow*>(window);
 
     switch(args.pixel_format) {
     case v4l2::fourcc("MJPG"):

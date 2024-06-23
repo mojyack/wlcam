@@ -11,8 +11,8 @@ subdir('src/encoder')
 subdir('src/pulse')
 subdir('src/gawl')
 
-gawl_files = gawl_core_files + gawl_graphic_files + gawl_no_touch_callbacks_file
-gawl_deps = gawl_core_deps + gawl_graphic_deps
+gawl_files = gawl_core_files + gawl_graphic_files + gawl_textrender_files + gawl_fc_files + gawl_no_touch_callbacks_file
+gawl_deps = gawl_core_deps + gawl_graphic_deps + gawl_textrender_deps + gawl_fc_deps
 
 tj_dep = dependency('libturbojpeg')
 

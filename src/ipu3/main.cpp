@@ -152,10 +152,11 @@ auto run(const int argc, const char* const argv[]) -> bool {
     // prepare gui
     auto context = Context();
 
-    auto       window_callbacks = std::shared_ptr<IPU3WindowCallbacks>(new IPU3WindowCallbacks(context));
-    auto       app              = gawl::WaylandApplication();
-    const auto window           = app.open_window({.title = "wlcam"}, std::move(window_callbacks));
-    const auto wlwindow         = std::bit_cast<gawl::WaylandWindow*>(window);
+    auto window_callbacks = std::shared_ptr<IPU3WindowCallbacks>(new IPU3WindowCallbacks(context));
+    assert_b(window_callbacks->init());
+    auto       app      = gawl::WaylandApplication();
+    const auto window   = app.open_window({.title = "wlcam"}, std::move(window_callbacks));
+    const auto wlwindow = std::bit_cast<gawl::WaylandWindow*>(window);
 
     auto control_rows                   = create_control_rows();
     auto params_callbacks               = std::shared_ptr<ParamsCallbacks>(new ParamsCallbacks());

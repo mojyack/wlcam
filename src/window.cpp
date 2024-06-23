@@ -1,7 +1,10 @@
 #include <linux/input.h>
 
+#include "gawl/fc.hpp"
 #include "gawl/misc.hpp"
 #include "gawl/window.hpp"
+#include "macros/unwrap.hpp"
+#include "util/assert.hpp"
 #include "window.hpp"
 
 auto WindowCallbacks::refresh() -> void {
@@ -58,6 +61,12 @@ auto WindowCallbacks::on_click(const uint32_t button, const gawl::ButtonState st
             context->camera_command = Command::TakePhoto;
         }
     }
+}
+
+auto WindowCallbacks::init() -> bool {
+    unwrap_ob_mut(font_path, gawl::find_fontpath_from_name("Noto Sans CJK JP"));
+    font.init({std::move(font_path)}, 32);
+    return true;
 }
 
 WindowCallbacks::WindowCallbacks(Context& context)
