@@ -30,7 +30,7 @@ class IPU3WindowCallbacks : public WindowCallbacks {
         : WindowCallbacks(context) {}
 };
 
-auto run(const int argc, const char* const argv[]) -> bool {
+auto run(gawl::WaylandApplication& app, const int argc, const char* const argv[]) -> bool {
     unwrap_ob(args, ipu3::Args::parse(argc, argv));
 
     // find devices
@@ -154,8 +154,7 @@ auto run(const int argc, const char* const argv[]) -> bool {
 
     auto window_callbacks = std::shared_ptr<IPU3WindowCallbacks>(new IPU3WindowCallbacks(context));
     assert_b(window_callbacks->init());
-    auto       app      = gawl::WaylandApplication();
-    const auto window   = app.open_window({.title = "wlcam"}, std::move(window_callbacks));
+    const auto window   = app.open_window({.title = "wlcam"}, window_callbacks);
     const auto wlwindow = std::bit_cast<gawl::WaylandWindow*>(window);
 
     auto control_rows                   = create_control_rows();
@@ -184,7 +183,7 @@ auto run(const int argc, const char* const argv[]) -> bool {
             WARN("unknown parameter ", key);
         }
     }
-    app.open_window({.title = "ipu3 parameters", .manual_refresh = true}, std::move(vcw_callbacks));
+    app.open_window({.title = "ipu3 parameters", .manual_refresh = true}, vcw_callbacks);
 
     init_yuv420sp_shader();
 
@@ -292,5 +291,6 @@ auto run(const int argc, const char* const argv[]) -> bool {
 }
 
 auto main(const int argc, const char* const argv[]) -> int {
-    return run(argc, argv) ? 0 : 1;
+    auto app = gawl::WaylandApplication();
+    return run(app, argc, argv) ? 0 : 1;
 }
