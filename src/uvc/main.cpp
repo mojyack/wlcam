@@ -15,9 +15,6 @@ class UVCWindowCallbacks : public WindowCallbacks {
         cam->shutdown();
         application->quit();
     }
-
-    UVCWindowCallbacks(Context& context)
-        : WindowCallbacks(context) {}
 };
 
 auto run(gawl::WaylandApplication& app, const int argc, const char* const argv[]) -> bool {
@@ -45,9 +42,7 @@ auto run(gawl::WaylandApplication& app, const int argc, const char* const argv[]
     assert_b(v4l2::start_stream(fd));
 
     auto file_manager = FileManager(args.savedir);
-    auto context      = Context();
-
-    auto callbacks = std::shared_ptr<UVCWindowCallbacks>(new UVCWindowCallbacks(context));
+    auto callbacks    = std::shared_ptr<UVCWindowCallbacks>(new UVCWindowCallbacks());
     assert_b(callbacks->init());
     const auto window   = app.open_window({.title = "wlcam"}, callbacks);
     const auto wlwindow = std::bit_cast<gawl::WaylandWindow*>(window);
@@ -69,15 +64,15 @@ auto run(gawl::WaylandApplication& app, const int argc, const char* const argv[]
 
     unwrap_ob(fmt, v4l2::get_current_format(fd));
     auto camera    = Camera(CameraParams{
-           .fd           = fd,
-           .width        = fmt.width,
-           .height       = fmt.height,
-           .fps          = args.fps,
-           .buffers      = buffers.data(),
-           .window       = wlwindow,
-           .file_manager = &file_manager,
-           .context      = &context,
-           .args         = &args,
+           .fd             = fd,
+           .width          = fmt.width,
+           .height         = fmt.height,
+           .fps            = args.fps,
+           .buffers        = buffers.data(),
+           .window         = wlwindow,
+           .window_context = &callbacks->get_context(),
+           .file_manager   = &file_manager,
+           .args           = &args,
     });
     callbacks->cam = &camera;
 

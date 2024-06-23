@@ -1,11 +1,11 @@
 #pragma once
-#include "../context.hpp"
 #include "../file.hpp"
 #include "../gawl/wayland/window.hpp"
 #include "../record-context.hpp"
 #include "../timer.hpp"
 #include "../util/event.hpp"
 #include "../v4l2.hpp"
+#include "../window.hpp"
 
 constexpr auto num_buffers = 4;
 
@@ -16,8 +16,8 @@ struct CameraParams {
     uint32_t             fps;
     v4l2::Buffer*        buffers;
     gawl::WaylandWindow* window;
+    WindowContext*       window_context;
     FileManager*         file_manager;
-    Context*             context;
     const CommonArgs*    args;
 };
 

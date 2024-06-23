@@ -12,7 +12,7 @@ constexpr auto bottom_bar_height = 32;
 auto WindowCallbacks::refresh() -> void {
     // proc command
     constexpr auto shutter_anim_duration = 10;
-    switch(std::exchange(context->ui_command, Command::None)) {
+    switch(std::exchange(context.ui_command, Command::None)) {
     case Command::TakePhotoDone:
         shutter_anim = shutter_anim_duration;
         break;
@@ -30,7 +30,7 @@ auto WindowCallbacks::refresh() -> void {
     gawl::clear_screen({0, 0, 0, 0});
     const auto [width, height] = window->get_window_size();
     const auto screen_rect     = gawl::Rectangle{{0, 0}, {1. * width, 1. * height}};
-    const auto frame           = context->frame;
+    const auto frame           = context.frame;
     if(frame) {
         frame->draw_fit_rect(*window, screen_rect);
     }
@@ -71,9 +71,9 @@ auto WindowCallbacks::on_click(const uint32_t button, const gawl::ButtonState st
     }
 
     if(movie) {
-        context->camera_command = recording ? Command::StopRecording : Command::StartRecording;
+        context.camera_command = recording ? Command::StopRecording : Command::StartRecording;
     } else {
-        context->camera_command = Command::TakePhoto;
+        context.camera_command = Command::TakePhoto;
     }
 }
 
@@ -83,12 +83,12 @@ auto WindowCallbacks::init() -> bool {
     return true;
 }
 
-WindowCallbacks::WindowCallbacks(Context& context)
-    : context(&context) {
+auto WindowCallbacks::get_context() -> WindowContext& {
+    return context;
 }
 
 WindowCallbacks::~WindowCallbacks() {
     if(recording) {
-        context->camera_command = Command::StopRecording;
+        context.camera_command = Command::StopRecording;
     }
 }

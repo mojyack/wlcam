@@ -46,16 +46,16 @@ loop:
         // other loader already decoded newer frame
         goto loop;
     }
-    params.context->frame = frame;
+    params.window_context->frame = frame;
 
     // proc command
-    switch(std::exchange(params.context->camera_command, Command::None)) {
+    switch(std::exchange(params.window_context->camera_command, Command::None)) {
     case Command::TakePhoto: {
         const auto path = params.file_manager->get_next_path().string() + ".jpg";
 
         assert_b(frame->save_to_jpeg(byte_array, path));
 
-        params.context->ui_command = Command::TakePhotoDone;
+        params.window_context->ui_command = Command::TakePhotoDone;
     } break;
     case Command::StartRecording: {
         const auto path = params.file_manager->get_next_path().string() + ".mkv";
@@ -65,12 +65,12 @@ loop:
         assert_b(rc->init(path, pix_fmt, *params.args));
         record_context.reset(rc.release());
 
-        params.context->ui_command = Command::StartRecordingDone;
+        params.window_context->ui_command = Command::StartRecordingDone;
     } break;
     case Command::StopRecording: {
         record_context.reset();
 
-        params.context->ui_command = Command::StopRecordingDone;
+        params.window_context->ui_command = Command::StopRecordingDone;
     } break;
     default:
         break;

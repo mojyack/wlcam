@@ -25,9 +25,6 @@ class IPU3WindowCallbacks : public WindowCallbacks {
     auto close() -> void override {
         application->quit();
     }
-
-    IPU3WindowCallbacks(Context& context)
-        : WindowCallbacks(context) {}
 };
 
 auto run(gawl::WaylandApplication& app, const int argc, const char* const argv[]) -> bool {
@@ -150,9 +147,7 @@ auto run(gawl::WaylandApplication& app, const int argc, const char* const argv[]
     }
 
     // prepare gui
-    auto context = Context();
-
-    auto window_callbacks = std::shared_ptr<IPU3WindowCallbacks>(new IPU3WindowCallbacks(context));
+    auto window_callbacks = std::shared_ptr<IPU3WindowCallbacks>(new IPU3WindowCallbacks());
     assert_b(window_callbacks->init());
     const auto window   = app.open_window({.title = "wlcam"}, window_callbacks);
     const auto wlwindow = std::bit_cast<gawl::WaylandWindow*>(window);
@@ -189,6 +184,7 @@ auto run(gawl::WaylandApplication& app, const int argc, const char* const argv[]
 
     auto running       = true;
     auto camera_thread = std::thread([&]() -> bool {
+        auto&      context        = window_callbacks->get_context();
         auto       window_context = wlwindow->fork_context();
         auto       file_manager   = FileManager(args.savedir);
         auto       record_context = std::unique_ptr<RecordContext>();
