@@ -20,7 +20,7 @@ class UVCWindowCallbacks : public WindowCallbacks {
         : WindowCallbacks(context) {}
 };
 
-auto run(const int argc, const char* const argv[]) -> bool {
+auto run(gawl::WaylandApplication& app, const int argc, const char* const argv[]) -> bool {
     unwrap_ob(args, Args::parse(argc, argv));
 
     const auto fdh = FileDescriptor(open(args.video_device, O_RDWR));
@@ -49,7 +49,6 @@ auto run(const int argc, const char* const argv[]) -> bool {
 
     auto callbacks = std::shared_ptr<UVCWindowCallbacks>(new UVCWindowCallbacks(context));
     assert_b(callbacks->init());
-    auto       app      = gawl::WaylandApplication();
     const auto window   = app.open_window({.title = "wlcam"}, callbacks);
     const auto wlwindow = std::bit_cast<gawl::WaylandWindow*>(window);
 
@@ -90,5 +89,6 @@ auto run(const int argc, const char* const argv[]) -> bool {
 }
 
 auto main(const int argc, const char* const argv[]) -> int {
-    return run(argc, argv) ? 0 : 1;
+    auto app = gawl::WaylandApplication();
+    return run(app, argc, argv) ? 0 : 1;
 }
