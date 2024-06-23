@@ -110,8 +110,7 @@ auto Camera::run() -> void {
     for(auto i = 0u; i < loaders.size(); i += 1) {
         loaders[i].thread = std::thread([this, i]() {
             if(!Camera::loader_main(i)) {
-                // TODO: find better error handling
-                std::exit(1);
+                params.window_context->error_message = "loaded died";
             }
         });
     }

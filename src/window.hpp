@@ -16,6 +16,7 @@ enum class Command {
 
 struct WindowContext {
     std::shared_ptr<Frame> frame;
+    std::string            error_message;
     Command                ui_command;     // camera -> ui
     Command                camera_command; // ui -> camera
 };
