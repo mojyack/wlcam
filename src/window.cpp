@@ -17,6 +17,7 @@ auto WindowCallbacks::refresh() -> void {
         shutter_anim = shutter_anim_duration;
         break;
     case Command::StartRecordingDone:
+        record_timer.reset();
         recording = true;
         break;
     case Command::StopRecordingDone:
@@ -47,6 +48,14 @@ auto WindowCallbacks::refresh() -> void {
     const auto bar_rect = gawl::Rectangle{{0, 1. * height - bottom_bar_height}, screen_rect.b};
     gawl::draw_rect(*window, bar_rect, {0, 0, 0, 0.7});
     font.draw_fit_rect(*window, bar_rect, {1, 1, 1, 1}, movie ? "video" : "photo", 0, gawl::Align::Left, gawl::Align::Center);
+    if(recording) {
+        const auto ms  = record_timer.elapsed<std::chrono::milliseconds>();
+        const auto sec = ms / 1000;
+        const auto min = sec / 60;
+        auto       buf = std::array<char, 10>();
+        snprintf(buf.data(), buf.size(), "%02d:%02d.%03d", std::min(int(min), 99), int(sec % 60), int(ms % 1000));
+        font.draw_fit_rect(*window, bar_rect, {1, 1, 1, 1}, buf.data(), 0, gawl::Align::Right, gawl::Align::Center);
+    }
 
     gawl::unmask_alpha();
 }

@@ -2,6 +2,7 @@
 #include "gawl/textrender.hpp"
 #include "gawl/window-no-touch-callbacks.hpp"
 #include "graphics-wrapper.hpp"
+#include "timer.hpp"
 
 enum class Command {
     None,
@@ -24,6 +25,7 @@ class WindowCallbacks : public gawl::WindowNoTouchCallbacks {
     WindowContext    context;
     gawl::TextRender font;
     gawl::Point      cursor;
+    Timer            record_timer;
     int              shutter_anim = 0;
     bool             movie        = false;
     bool             recording    = false;
