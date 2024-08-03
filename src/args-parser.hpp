@@ -11,5 +11,5 @@ auto setup_common_args(CommonArgs& args, args::Parser<Args...>& parser) -> void 
     parser.kwarg(&args.video_filter, {"--video-filter"}, {"FILTER", "video filter", args::State::Initialized});
     parser.kwarg(&args.audio_sample_rate, {"--audio-sample-rate"}, {"NUM", "audio sampling rate", args::State::DefaultValue});
     parser.kwarg(&args.ffmpeg_debug, {"--ffmpeg-debug"}, {"", "enable ffmpeg debug outputs", args::State::Initialized});
-    parser.kwarg(&args.help, {"-h", "--help"}, {"", "print this help message", args::State::Initialized});
+    parser.kwarg(&args.help, {"-h", "--help"}, {.arg_desc = "print this help message", .state = args::State::Initialized, .no_error_check = true});
 }

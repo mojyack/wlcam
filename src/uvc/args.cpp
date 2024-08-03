@@ -33,7 +33,7 @@ auto Args::parse(const int argc, const char* const argv[]) -> std::optional<Args
     parser.kwarg(&args.list_formats, {"-l", "--list-formats"}, {"", "list supported formats of the video device", args::State::Initialized});
     if(!parser.parse(argc, argv) || args.help) {
         print("usage: wlcam-uvc ", parser.get_help());
-        return std::nullopt;
+        exit(0);
     }
     return args;
 }

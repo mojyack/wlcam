@@ -53,7 +53,7 @@ auto Args::parse(const int argc, const char* const argv[]) -> std::optional<Args
     parser.kwarg(&args.ipu3_params, {"--params"}, {"KEY=VALUE,...", "ipu3 parameter, wb_gains.r, gamma, etc.", args::State::Initialized});
     if(!parser.parse(argc, argv) || args.help) {
         print("usage: wlcam-ipu3 ", parser.get_help());
-        return std::nullopt;
+        exit(0);
     }
     return args;
 }
