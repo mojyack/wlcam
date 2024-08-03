@@ -32,10 +32,10 @@ auto run(gawl::WaylandApplication& app, const int argc, const char* const argv[]
 
     // find devices
     unwrap_ob(node_map, dev::enumerate());
-    unwrap_ob_mut(cio2_device, parse_device(args.cio2_devnode, node_map));
+    unwrap_ob_mut(cio2_device, parse_device(args.cio2_devnode.data(), node_map));
     assert_b(cio2_device.disable_all_links());
 
-    unwrap_ob_mut(imgu_device, parse_device(args.imgu_devnode, node_map));
+    unwrap_ob_mut(imgu_device, parse_device(args.imgu_devnode.data(), node_map));
     assert_b(imgu_device.disable_all_links());
 
     auto imgu_0 = ipu3::ImgUDevice();

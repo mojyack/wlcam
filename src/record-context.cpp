@@ -7,18 +7,18 @@ auto RecordContext::init(std::string path, const AVPixelFormat pix_fmt, const Co
         .output = std::move(path),
         .video  = ff::VideoParams{
              .codec = {
-                 .name    = args.video_codec,
+                 .name    = std::string(args.video_codec),
                  .options = {}, // TODO: make configurable
             },
              .pix_fmt = pix_fmt,
              .width   = int(args.width),
              .height  = int(args.height),
              .threads = 4, // TODO: make configurable
-             .filter  = args.video_filter,
+             .filter  = std::string(args.video_filter),
         },
         .audio = ff::AudioParams{
             .codec = {
-                .name    = args.audio_codec,
+                .name    = std::string(args.audio_codec),
                 .options = {},
             },
             .sample_fmt     = AV_SAMPLE_FMT_FLTP,
@@ -31,7 +31,7 @@ auto RecordContext::init(std::string path, const AVPixelFormat pix_fmt, const Co
 
     auto recorder_params = pa::Params{
         .sample_format    = pa_parse_sample_format("float32"),
-        .sample_rate      = args.audio_sample_rate,
+        .sample_rate      = uint32_t(args.audio_sample_rate),
         .samples_per_read = uint32_t(encoder.get_audio_samples_per_push()),
     };
     assert_b(recorder.init(std::move(recorder_params)));

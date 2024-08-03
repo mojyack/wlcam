@@ -2,7 +2,6 @@
 #include "../file.hpp"
 #include "../gawl/wayland/window.hpp"
 #include "../record-context.hpp"
-#include "../timer.hpp"
 #include "../util/event.hpp"
 #include "../v4l2.hpp"
 #include "../window.hpp"

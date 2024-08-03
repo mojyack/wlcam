@@ -2,7 +2,6 @@
 #include <unistd.h>
 
 #include "../macros/unwrap.hpp"
-#include "../util/assert.hpp"
 #include "camera.hpp"
 
 auto Camera::loader_main(const size_t index) -> bool {
@@ -14,7 +13,6 @@ loop:
         return true;
     }
     event.wait();
-    event.clear();
     if(!running) {
         return true;
     }
@@ -98,7 +96,7 @@ loop:
 
     assert_b(poll(fds.data(), 1, 0) != -1);
     unwrap_ob(index, v4l2::dequeue_buffer(params.fd, V4L2_BUF_TYPE_VIDEO_CAPTURE));
-    loaders[index].event.wakeup();
+    loaders[index].event.notify();
 
     timer.tick();
 
@@ -123,7 +121,7 @@ auto Camera::shutdown() -> void {
     }
     running = false;
     for(auto& loader : loaders) {
-        loader.event.wakeup();
+        loader.event.notify();
         loader.thread.join();
     }
     worker.join();

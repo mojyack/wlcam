@@ -6,15 +6,16 @@
 
 namespace ipu3 {
 struct Args : CommonArgs {
-    const char* cio2_devnode;
-    const char* imgu_devnode;
-    const char* cio2_entity;
-    const char* imgu_entity;
-    int         sensor_mbus_code = 0;
-    int         sensor_width     = 0;
-    int         sensor_height    = 0;
+    using Params = std::vector<std::pair<std::string_view, int>>;
 
-    std::vector<std::pair<const char*, int>> ipu3_params;
+    std::string_view cio2_devnode;
+    std::string_view imgu_devnode;
+    std::string_view cio2_entity;
+    std::string_view imgu_entity;
+    int              sensor_mbus_code;
+    int              sensor_width;
+    int              sensor_height;
+    Params           ipu3_params;
 
     static auto parse(int argc, const char* const argv[]) -> std::optional<Args>;
 };

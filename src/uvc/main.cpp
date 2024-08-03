@@ -20,7 +20,7 @@ class UVCWindowCallbacks : public WindowCallbacks {
 auto run(gawl::WaylandApplication& app, const int argc, const char* const argv[]) -> bool {
     unwrap_ob(args, Args::parse(argc, argv));
 
-    const auto fdh = FileDescriptor(open(args.video_device, O_RDWR));
+    const auto fdh = FileDescriptor(open(args.video_device.data(), O_RDWR));
     const auto fd  = fdh.as_handle();
     assert_b(fd >= 0);
     unwrap_ob(is_capture_device, v4l2::is_capture_device(fd));
@@ -31,7 +31,7 @@ auto run(gawl::WaylandApplication& app, const int argc, const char* const argv[]
         return 0;
     }
 
-    assert_b(v4l2::set_format(fd, args.pixel_format, args.width, args.height));
+    assert_b(v4l2::set_format(fd, args.pixel_format.data, args.width, args.height));
     assert_b(v4l2::set_interval(fd, 1, args.fps));
 
     unwrap_ob(req, v4l2::request_buffers(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, V4L2_MEMORY_MMAP, num_buffers));
@@ -47,7 +47,7 @@ auto run(gawl::WaylandApplication& app, const int argc, const char* const argv[]
     const auto window   = app.open_window({.title = "wlcam"}, callbacks);
     const auto wlwindow = std::bit_cast<gawl::WaylandWindow*>(window);
 
-    switch(args.pixel_format) {
+    switch(args.pixel_format.data) {
     case v4l2::fourcc("MJPG"):
         init_planar_shader();
         break;
@@ -67,7 +67,7 @@ auto run(gawl::WaylandApplication& app, const int argc, const char* const argv[]
            .fd             = fd,
            .width          = fmt.width,
            .height         = fmt.height,
-           .fps            = args.fps,
+           .fps            = uint32_t(args.fps),
            .buffers        = buffers.data(),
            .window         = wlwindow,
            .window_context = &callbacks->get_context(),

@@ -8,7 +8,6 @@ uvc_files = files(
   '../window.cpp',
   '../yuv.cpp',
   '../graphics-wrapper.cpp',
-  '../args.cpp',
   '../record-context.cpp',
   '../encoder/encoder.cpp',
   '../encoder/converter.cpp',
