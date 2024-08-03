@@ -1,7 +1,6 @@
 #include "../file.hpp"
 #include "../gawl/wayland/application.hpp"
 #include "../macros/unwrap.hpp"
-#include "../util/assert.hpp"
 #include "../v4l2.hpp"
 #include "../window.hpp"
 #include "args.hpp"
@@ -20,7 +19,7 @@ class UVCWindowCallbacks : public WindowCallbacks {
 auto run(gawl::WaylandApplication& app, const int argc, const char* const argv[]) -> bool {
     unwrap_ob(args, Args::parse(argc, argv));
 
-    const auto fdh = FileDescriptor(open(args.video_device.data(), O_RDWR));
+    const auto fdh = FileDescriptor(open(args.video_device, O_RDWR));
     const auto fd  = fdh.as_handle();
     assert_b(fd >= 0);
     unwrap_ob(is_capture_device, v4l2::is_capture_device(fd));

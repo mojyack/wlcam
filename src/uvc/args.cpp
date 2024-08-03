@@ -7,9 +7,9 @@
 namespace args {
 namespace {
 template <>
-auto from_string<Args::FourCC>(std::string_view str) -> std::optional<Args::FourCC> {
-    assert_o(str.size() == 4);
-    return Args::FourCC{v4l2::fourcc(str.data())};
+auto from_string<Args::FourCC>(const char* str) -> std::optional<Args::FourCC> {
+    assert_o(strlen(str) == 4);
+    return Args::FourCC{v4l2::fourcc(str)};
 }
 
 template <>

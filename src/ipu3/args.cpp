@@ -11,7 +11,7 @@ namespace args {
 namespace {
 using Params = ::ipu3::Args::Params;
 template <>
-auto from_string<Params>(std::string_view str) -> std::optional<Params> {
+auto from_string<Params>(const char* str) -> std::optional<Params> {
     auto elms = split(str, ",");
     auto ret  = Params(elms.size());
     for(auto i = 0u; i < elms.size(); i += 1) {

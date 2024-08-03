@@ -7,10 +7,10 @@ struct Args : CommonArgs {
         uint32_t data;
     };
 
-    std::string_view video_device = "/dev/video0";
-    int              fps          = 30;
-    FourCC           pixel_format = {v4l2::fourcc("MJPG")};
-    bool             list_formats = false;
+    const char* video_device = "/dev/video0";
+    int         fps          = 30;
+    FourCC      pixel_format = {v4l2::fourcc("MJPG")};
+    bool        list_formats = false;
 
     static auto parse(int argc, const char* const argv[]) -> std::optional<Args>;
 };
