@@ -30,7 +30,7 @@ auto Args::parse(const int argc, const char* const argv[]) -> std::optional<Args
     parser.kwarg(&args.video_device, {"-d", "--device"}, {"PATH", "video device", args::State::DefaultValue});
     parser.kwarg(&args.fps, {"--fps"}, {"FPS", "refresh rate", args::State::DefaultValue});
     parser.kwarg(&args.pixel_format, {"--pix-format"}, {"{MJPG|YUYV|NV12}", "pixel format", args::State::DefaultValue});
-    parser.kwarg(&args.list_formats, {"-l", "--list-formats"}, {"", "list supported formats of the video device", args::State::Initialized});
+    parser.kwarg(&args.list_formats, {"-l", "--list-formats"}, {.arg_desc = "list supported formats of the video device", .state = args::State::Initialized, .no_error_check = true});
     if(!parser.parse(argc, argv) || args.help) {
         print("usage: wlcam-uvc ", parser.get_help());
         exit(0);
