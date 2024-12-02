@@ -1,7 +1,6 @@
 #include <chrono>
 
 #include "file.hpp"
-#include "util/misc.hpp"
 
 auto FileManager::get_next_path() const -> Path {
     const auto duration = std::chrono::system_clock::now().time_since_epoch();

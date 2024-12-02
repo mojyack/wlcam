@@ -32,11 +32,11 @@ auto yuv420sp_fragment_shader_source = R"glsl(
     }
 )glsl";
 
-auto shader = (gawl::impl::GraphicShader*)(nullptr);
+auto shader = gawl::impl::GraphicShader();
 } // namespace
 
-auto init_yuv420sp_shader() -> void {
-    shader = new gawl::impl::GraphicShader(gawl::impl::graphic_vertex_shader_source, yuv420sp_fragment_shader_source);
+auto init_yuv420sp_shader() -> bool {
+    return shader.init(gawl::impl::graphic_vertex_shader_source, yuv420sp_fragment_shader_source);
 }
 
 auto YUV420spGraphic::update_texture(const int width, const int height, const int stride, const std::byte* const y, const std::byte* const uv) -> void {
@@ -53,5 +53,5 @@ auto YUV420spGraphic::update_texture(const int width, const int height, const in
 }
 
 YUV420spGraphic::YUV420spGraphic()
-    : MultiTex(*::shader, 2) {
+    : MultiTex(::shader, 2) {
 }

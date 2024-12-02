@@ -4,7 +4,7 @@
 #pragma once
 #include "multitex.hpp"
 
-auto init_yuv420sp_shader() -> void;
+auto init_yuv420sp_shader() -> bool;
 
 class YUV420spGraphic : public MultiTex {
   public:

@@ -19,11 +19,11 @@ auto planar_fragment_shader_source = R"glsl(
     }
 )glsl";
 
-auto shader = (gawl::impl::GraphicShader*)(nullptr);
+auto shader = gawl::impl::GraphicShader();
 } // namespace
 
-auto init_planar_shader() -> void {
-    shader = new gawl::impl::GraphicShader(gawl::impl::graphic_vertex_shader_source, planar_fragment_shader_source);
+auto init_planar_shader() -> bool {
+    return shader.init(gawl::impl::graphic_vertex_shader_source, planar_fragment_shader_source);
 }
 
 auto PlanarGraphic::update_texture(const int width, const int height, const int stride, const int ppc_x, const int ppc_y, const std::byte* const y, const std::byte* const u, const std::byte* const v) -> void {
@@ -45,5 +45,5 @@ auto PlanarGraphic::update_texture(const int width, const int height, const int 
 }
 
 PlanarGraphic::PlanarGraphic()
-    : MultiTex(*::shader, 3) {
+    : MultiTex(::shader, 3) {
 }

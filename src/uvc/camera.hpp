@@ -1,8 +1,11 @@
 #pragma once
+#include <coop/generator.hpp>
+#include <coop/promise.hpp>
+#include <coop/single-event.hpp>
+
 #include "../file.hpp"
 #include "../gawl/wayland/window.hpp"
 #include "../record-context.hpp"
-#include "../util/event.hpp"
 #include "../v4l2.hpp"
 #include "../window.hpp"
 
@@ -23,25 +26,23 @@ struct CameraParams {
 class Camera {
   private:
     struct Loader {
-        Event       event;
-        std::thread thread;
+        coop::SingleEvent event;
+        coop::TaskHandle  task;
     };
 
     CameraParams                    params;
     std::shared_ptr<RecordContext>  record_context;
-    std::thread                     worker;
     std::array<Loader, num_buffers> loaders;
-    std::atomic_size_t              current_frame_count = 0;
-    std::atomic_size_t              front_frame_count   = 0;
-    bool                            running             = false;
+    coop::TaskHandle                dispatcher;
+    size_t                          current_frame_count = 0;
+    size_t                          front_frame_count   = 0;
 
-    auto loader_main(size_t index) -> bool;
-    auto worker_main() -> bool;
+    auto loader_main(size_t index) -> coop::Async<void>;
+    auto dispatcher_main() -> coop::Async<bool>;
 
   public:
-    auto run() -> void;
+    auto run(CameraParams params) -> coop::Async<void>;
     auto shutdown() -> void;
 
-    Camera(CameraParams params);
     ~Camera();
 };

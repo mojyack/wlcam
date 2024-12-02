@@ -1,7 +1,5 @@
-#include "macros/assert.hpp"
-#include "util/assert.hpp"
-
 #include "pulse.hpp"
+#include "macros/assert.hpp"
 
 namespace pa {
 constexpr auto channels = 2;
@@ -26,14 +24,14 @@ auto Recorder::init(Params params_) -> bool {
 
     const auto dev = params.device.empty() ? "default" : params.device.data();
     pa.reset(pa_simple_new(NULL, params.client_name.data(), PA_STREAM_RECORD, dev, "capture", &spec, &map, &attr, NULL));
-    assert_b(pa.get() != NULL);
+    ensure(pa.get() != NULL);
 
     return true;
 }
 
 auto Recorder::read_buffer() -> std::optional<std::vector<std::byte>> {
     auto buf = std::vector<std::byte>(params.samples_per_read * channels * sample_format_size);
-    assert_o(pa_simple_read(pa.get(), buf.data(), buf.size(), NULL) == 0);
+    ensure(pa_simple_read(pa.get(), buf.data(), buf.size(), NULL) == 0);
     return buf;
 }
 } // namespace pa

@@ -1,23 +1,19 @@
+#include <coop/io.hpp>
+#include <coop/parallel.hpp>
+#include <coop/thread.hpp>
 #include <poll.h>
 #include <unistd.h>
 
 #include "../macros/unwrap.hpp"
 #include "camera.hpp"
 
-auto Camera::loader_main(const size_t index) -> bool {
-    unwrap_ob(fmt, v4l2::get_current_format(params.fd));
-    auto  window_context = params.window->fork_context();
-    auto& event          = loaders[index].event;
+auto Camera::loader_main(const size_t index) -> coop::Async<void> {
+    co_unwrap_v(fmt, v4l2::get_current_format(params.fd));
+    auto& event = loaders[index].event;
 loop:
-    if(!running) {
-        return true;
-    }
-    event.wait();
-    if(!running) {
-        return true;
-    }
+    co_await event;
 
-    const auto frame_count = current_frame_count.fetch_add(1);
+    const auto frame_count = (current_frame_count += 1);
 
     // unpack image
     auto frame = std::shared_ptr<Frame>();
@@ -32,15 +28,20 @@ loop:
         frame.reset(new YUV420SPFrame(params.width, params.height, fmt.bytesperline));
         break;
     default:
-        WARN("pixelformat bug");
-        return false;
+        co_bail_v("pixelformat bug");
     }
     const auto byte_array = Frame::ByteArray{static_cast<std::byte*>(params.buffers[index].start), params.buffers[index].length};
-    assert_b(frame->load_texture(byte_array));
-    assert_b(v4l2::queue_buffer(params.fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, index));
-    window_context.flush();
+    co_ensure_v(co_await coop::run_blocking([&, window = params.window]() {
+        auto       window_context = window->fork_context();
+        const auto ret            = frame->load_texture(byte_array);
+        window_context.flush();
+        return ret;
+    }));
+    co_ensure_v(v4l2::queue_buffer(params.fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, index));
 
-    if(front_frame_count.exchange(frame_count) > frame_count) {
+    if(front_frame_count < frame_count) {
+        front_frame_count = frame_count;
+    } else {
         // other loader already decoded newer frame
         goto loop;
     }
@@ -51,17 +52,16 @@ loop:
     case Command::TakePhoto: {
         const auto path = params.file_manager->get_next_path().string() + ".jpg";
 
-        assert_b(frame->save_to_jpeg(byte_array, path));
+        co_ensure_v(co_await coop::run_blocking([&]() { return frame->save_to_jpeg(byte_array, path); }));
 
         params.window_context->ui_command = Command::TakePhotoDone;
     } break;
     case Command::StartRecording: {
         const auto path = params.file_manager->get_next_path().string() + ".mkv";
 
-        unwrap_ob(pix_fmt, frame->get_pixel_format());
-        auto rc = std::unique_ptr<RecordContext>(new RecordContext());
-        assert_b(rc->init(path, pix_fmt, *params.args));
-        record_context.reset(rc.release());
+        co_unwrap_v(pix_fmt, frame->get_pixel_format());
+        record_context.reset(new RecordContext());
+        co_ensure_v(record_context->init(path, pix_fmt, *params.args));
 
         params.window_context->ui_command = Command::StartRecordingDone;
     } break;
@@ -75,27 +75,31 @@ loop:
     }
 
     if(const auto rc = record_context) {
-        unwrap_ob(planes, frame->get_planes(byte_array));
-        rc->encoder.add_frame(planes, rc->timer.elapsed<std::chrono::microseconds>());
+        co_unwrap_v(planes, frame->get_planes(byte_array));
+        co_await coop::run_blocking([&]() { rc->encoder.add_frame(planes, rc->timer.elapsed<std::chrono::microseconds>()); });
     }
 
     goto loop;
 }
 
-auto Camera::worker_main() -> bool {
-    auto fds      = std::array<pollfd, 1>();
-    fds[0].fd     = params.fd;
-    fds[0].events = POLLIN;
+auto Camera::dispatcher_main() -> coop::Async<bool> {
+    constexpr static auto error_value = false;
 
-    auto timer = FPSTimer();
-
-loop:
-    if(!running) {
-        return true;
+    // start loaders
+    auto works   = std::vector<coop::Async<void>>(loaders.size());
+    auto handles = std::vector<coop::TaskHandle*>(loaders.size());
+    for(auto i = 0u; i < loaders.size(); i += 1) {
+        works[i]   = loader_main(i);
+        handles[i] = &loaders[i].task;
     }
+    co_await coop::run_vec(std::move(works)).detach(std::move(handles));
 
-    assert_b(poll(fds.data(), 1, 0) != -1);
-    unwrap_ob(index, v4l2::dequeue_buffer(params.fd, V4L2_BUF_TYPE_VIDEO_CAPTURE));
+    // loop
+    auto timer = FPSTimer();
+loop:
+    const auto res = co_await coop::wait_for_file(params.fd, true, false);
+    co_ensure_v(res.read && !res.error);
+    co_unwrap_v(index, v4l2::dequeue_buffer(params.fd, V4L2_BUF_TYPE_VIDEO_CAPTURE));
     loaders[index].event.notify();
 
     timer.tick();
@@ -103,32 +107,16 @@ loop:
     goto loop;
 }
 
-auto Camera::run() -> void {
-    running = true;
-    for(auto i = 0u; i < loaders.size(); i += 1) {
-        loaders[i].thread = std::thread([this, i]() {
-            if(!Camera::loader_main(i)) {
-                params.window_context->error_message = "loaded died";
-            }
-        });
-    }
-    worker = std::thread(&Camera::worker_main, this);
+auto Camera::run(CameraParams params) -> coop::Async<void> {
+    this->params = std::move(params);
+    co_await coop::run_args(dispatcher_main()).detach({&dispatcher});
 }
 
 auto Camera::shutdown() -> void {
-    if(!running) {
-        return;
-    }
-    running = false;
     for(auto& loader : loaders) {
-        loader.event.notify();
-        loader.thread.join();
+        loader.task.cancel();
     }
-    worker.join();
-}
-
-Camera::Camera(CameraParams params)
-    : params(std::move(params)) {
+    dispatcher.cancel();
 }
 
 Camera::~Camera() {

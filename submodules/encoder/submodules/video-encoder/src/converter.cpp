@@ -1,26 +1,24 @@
 #include "converter.hpp"
-
 #include "macros/assert.hpp"
-#include "util/assert.hpp"
 
 namespace ff {
 auto AudioConverter::init(Format from_, Format to_) -> bool {
     from = from_;
     to   = to_;
 
-    assert_b(av_channel_layout_from_mask(&from_channel, from.channel_layout_mask) == 0);
-    assert_b(av_channel_layout_from_mask(&to_channel, to.channel_layout_mask) == 0);
+    ensure(av_channel_layout_from_mask(&from_channel, from.channel_layout_mask) == 0);
+    ensure(av_channel_layout_from_mask(&to_channel, to.channel_layout_mask) == 0);
 
     swr_ctx.reset(swr_alloc());
-    assert_b(swr_ctx.get() != NULL);
+    ensure(swr_ctx.get() != NULL);
 
-    assert_b(av_opt_set_int(swr_ctx.get(), "in_sample_rate", from.rate, 0) == 0);
-    assert_b(av_opt_set_int(swr_ctx.get(), "out_sample_rate", to.rate, 0) == 0);
-    assert_b(av_opt_set_sample_fmt(swr_ctx.get(), "in_sample_fmt", from.format, 0) == 0);
-    assert_b(av_opt_set_sample_fmt(swr_ctx.get(), "out_sample_fmt", to.format, 0) == 0);
-    assert_b(av_opt_set_chlayout(swr_ctx.get(), "in_chlayout", &from_channel, 0) == 0);
-    assert_b(av_opt_set_chlayout(swr_ctx.get(), "out_chlayout", &to_channel, 0) == 0);
-    assert_b(swr_init(swr_ctx.get()) == 0);
+    ensure(av_opt_set_int(swr_ctx.get(), "in_sample_rate", from.rate, 0) == 0);
+    ensure(av_opt_set_int(swr_ctx.get(), "out_sample_rate", to.rate, 0) == 0);
+    ensure(av_opt_set_sample_fmt(swr_ctx.get(), "in_sample_fmt", from.format, 0) == 0);
+    ensure(av_opt_set_sample_fmt(swr_ctx.get(), "out_sample_fmt", to.format, 0) == 0);
+    ensure(av_opt_set_chlayout(swr_ctx.get(), "in_chlayout", &from_channel, 0) == 0);
+    ensure(av_opt_set_chlayout(swr_ctx.get(), "out_chlayout", &to_channel, 0) == 0);
+    ensure(swr_init(swr_ctx.get()) == 0);
 
     return true;
 }
@@ -42,7 +40,7 @@ auto AudioConverter::convert(const std::byte* const buffer, const size_t buffer_
 
     processed_samples += buffer_samples;
 
-    assert_o(swr_convert_frame(swr_ctx.get(), outputf.get(), inputf.get()) == 0);
+    ensure(swr_convert_frame(swr_ctx.get(), outputf.get(), inputf.get()) == 0);
     return outputf;
 }
 } // namespace ff

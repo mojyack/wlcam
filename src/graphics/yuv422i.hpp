@@ -4,7 +4,7 @@
 #pragma once
 #include "../gawl/graphic-base.hpp"
 
-auto init_yuv422i_shader() -> void;
+auto init_yuv422i_shader() -> bool;
 
 class YUV422iGraphic : public gawl::impl::GraphicBase {
   public:

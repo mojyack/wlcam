@@ -2,10 +2,8 @@
 #include "encoder/encoder.hpp"
 #include "macros/assert.hpp"
 #include "pulse/pulse.hpp"
-#include "util/assert.hpp"
-#include "util/misc.hpp"
 
-auto main(const int argc, const char* const argv[]) -> int {
+auto main(const int argc, const char* const* /*argv*/) -> int {
     constexpr auto video       = true;
     constexpr auto audio       = true;
     constexpr auto width       = 300;
@@ -49,10 +47,10 @@ auto main(const int argc, const char* const argv[]) -> int {
     }
 
     auto encoder = ff::Encoder();
-    assert_v(encoder.init(std::move(params)), 1);
+    ensure(encoder.init(std::move(params)));
 
     auto converter = ff::AudioConverter();
-    assert_v(converter.init({sample_rate, AV_SAMPLE_FMT_FLT, AV_CH_LAYOUT_STEREO}, {sample_rate, AV_SAMPLE_FMT_FLTP, AV_CH_LAYOUT_STEREO}), 1);
+    ensure(converter.init({sample_rate, AV_SAMPLE_FMT_FLT, AV_CH_LAYOUT_STEREO}, {sample_rate, AV_SAMPLE_FMT_FLTP, AV_CH_LAYOUT_STEREO}));
 
     auto buf1 = std::vector<std::byte>(width * height);
     auto buf2 = std::vector<std::byte>(width * height);
@@ -83,13 +81,13 @@ auto main(const int argc, const char* const argv[]) -> int {
         .samples_per_read = uint32_t(num_samples_per_push),
     };
     auto recorder = pa::Recorder();
-    assert_v(recorder.init(std::move(recorder_params)), 1);
+    ensure(recorder.init(std::move(recorder_params)));
 
     for(auto i = 0u; i < duration * sample_rate / num_samples_per_push; i += 1) {
         const auto samples = recorder.read_buffer();
-        assert_v(samples, 1);
+        ensure(samples);
         const auto frame = converter.convert(samples->data(), num_samples_per_push);
-        assert_v(frame, 1);
+        ensure(frame);
         encoder.add_audio(frame->get());
     }
 

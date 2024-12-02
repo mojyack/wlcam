@@ -3,7 +3,6 @@
 #include <unistd.h>
 
 #include "macros/unwrap.hpp"
-#include "util/assert.hpp"
 #include "v4l2.hpp"
 
 // #include "ioctl-debug.hpp"
@@ -26,7 +25,7 @@ auto export_dmabuf(const int fd, const uint32_t index, const uint32_t plane, con
     expbuf.plane = plane;
     expbuf.flags = O_CLOEXEC | O_RDWR;
 
-    assert_b(xioctl(fd, VIDIOC_EXPBUF, &expbuf) == 0);
+    ensure(xioctl(fd, VIDIOC_EXPBUF, &expbuf) == 0);
 
     return expbuf.fd;
 }
@@ -35,7 +34,7 @@ auto export_dmabuf(const int fd, const uint32_t index, const uint32_t plane, con
 namespace v4l2 {
 auto is_capture_device(const int fd) -> std::optional<bool> {
     auto cap = v4l2_capability();
-    assert_o(xioctl(fd, VIDIOC_QUERYCAP, &cap) != -1);
+    ensure(xioctl(fd, VIDIOC_QUERYCAP, &cap) != -1);
     return cap.capabilities & V4L2_CAP_VIDEO_CAPTURE && cap.capabilities & V4L2_CAP_STREAMING;
 }
 
@@ -107,7 +106,7 @@ auto get_current_format(const int fd) -> std::optional<v4l2_pix_format> {
     auto fmt = v4l2_format{};
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
-    assert_o(xioctl(fd, VIDIOC_G_FMT, &fmt) != -1, "get_format failed: ", errno);
+    ensure(xioctl(fd, VIDIOC_G_FMT, &fmt) != -1, "get_format failed: ", errno);
     return fmt.fmt.pix;
 }
 
@@ -119,7 +118,7 @@ auto set_format(const int fd, const uint32_t pixelformat, const uint32_t width, 
     fmt.fmt.pix.pixelformat = pixelformat;
     fmt.fmt.pix.field       = V4L2_FIELD_ANY;
 
-    assert_o(xioctl(fd, VIDIOC_S_FMT, &fmt) != -1, "set_format failed: ", errno);
+    ensure(xioctl(fd, VIDIOC_S_FMT, &fmt) != -1, "set_format failed: ", errno);
     return fmt.fmt.pix;
 }
 
@@ -139,7 +138,7 @@ auto set_format_mp(const int fd, const v4l2_buf_type buffer_type, const uint32_t
         }
     }
 
-    assert_o(xioctl(fd, VIDIOC_S_FMT, &fmt) != -1, "set_format failed: ", errno);
+    ensure(xioctl(fd, VIDIOC_S_FMT, &fmt) != -1, "set_format failed: ", errno);
     return fmt;
 }
 
@@ -173,8 +172,8 @@ auto request_buffers(const int fd, const v4l2_buf_type buffer_type, const v4l2_m
     req.type   = buffer_type;
     req.memory = memory_type;
 
-    assert_o(xioctl(fd, VIDIOC_REQBUFS, &req) != -1);
-    assert_o(req.count >= count);
+    ensure(xioctl(fd, VIDIOC_REQBUFS, &req) != -1);
+    ensure(req.count >= count);
 
     return req;
 }
@@ -187,7 +186,7 @@ auto map_buffers(const int fd, const v4l2_buf_type buffer_type, const v4l2_reque
         buf.type   = buffer_type;
         buf.memory = V4L2_MEMORY_MMAP;
         buf.index  = i;
-        assert_o(xioctl(fd, VIDIOC_QUERYBUF, &buf) != -1);
+        ensure(xioctl(fd, VIDIOC_QUERYBUF, &buf) != -1);
 
         buffers[i].length = buf.length;
         buffers[i].start  = mmap(NULL, buf.length,
@@ -207,9 +206,9 @@ auto query_and_export_buffers(const int fd, const v4l2_buf_type buffer_type, con
 
         buf.type  = buffer_type;
         buf.index = i;
-        assert_o(xioctl(fd, VIDIOC_QUERYBUF, &buf) == 0, errno);
+        ensure(xioctl(fd, VIDIOC_QUERYBUF, &buf) == 0, errno);
 
-        unwrap_oo(dmabuffd, export_dmabuf(fd, i, 0, buffer_type));
+        unwrap(dmabuffd, export_dmabuf(fd, i, 0, buffer_type));
         buffers.emplace_back(DMABuffer{FileDescriptor(dmabuffd), buf.length});
     }
 
@@ -227,10 +226,10 @@ auto query_and_export_buffers_mp(const int fd, const v4l2_buf_type buffer_type, 
         buf.index    = i;
         buf.length   = planes.size();
         buf.m.planes = planes.data();
-        assert_o(xioctl(fd, VIDIOC_QUERYBUF, &buf) == 0, errno);
+        ensure(xioctl(fd, VIDIOC_QUERYBUF, &buf) == 0, errno);
 
         for(auto j = 0u; j < buf.length; j += 1) {
-            unwrap_oo(dmabuffd, export_dmabuf(fd, i, j, buffer_type));
+            unwrap(dmabuffd, export_dmabuf(fd, i, j, buffer_type));
             buffers.emplace_back(DMABuffer{FileDescriptor(dmabuffd), planes[j].length});
         }
     }
@@ -273,7 +272,7 @@ auto dequeue_buffer_mp(const int fd, const v4l2_buf_type buffer_type, const v4l2
     buf.memory   = memory_type;
     buf.length   = planes.size();
     buf.m.planes = planes.data();
-    assert_o(xioctl(fd, VIDIOC_DQBUF, &buf) != -1);
+    ensure(xioctl(fd, VIDIOC_DQBUF, &buf) != -1);
     return buf.index;
 }
 
@@ -282,7 +281,7 @@ auto dequeue_buffer(const int fd, const v4l2_buf_type buffer_type) -> std::optio
 
     buf.type   = buffer_type;
     buf.memory = V4L2_MEMORY_MMAP;
-    assert_o(xioctl(fd, VIDIOC_DQBUF, &buf) != -1);
+    ensure(xioctl(fd, VIDIOC_DQBUF, &buf) != -1);
     return buf.index;
 }
 

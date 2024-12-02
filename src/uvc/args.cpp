@@ -5,10 +5,9 @@
 #include "args.hpp"
 
 namespace args {
-namespace {
 template <>
 auto from_string<Args::FourCC>(const char* str) -> std::optional<Args::FourCC> {
-    assert_o(strlen(str) == 4);
+    ensure(strlen(str) == 4);
     return Args::FourCC{v4l2::fourcc(str)};
 }
 
@@ -20,17 +19,16 @@ auto to_string<Args::FourCC>(const Args::FourCC& data) -> std::string {
 
     return ret;
 }
-} // namespace
 } // namespace args
 
 auto Args::parse(const int argc, const char* const argv[]) -> std::optional<Args> {
     auto args   = Args();
     auto parser = args::Parser<FourCC>();
     setup_common_args(args, parser);
-    parser.kwarg(&args.video_device, {"-d", "--device"}, {"PATH", "video device", args::State::DefaultValue});
-    parser.kwarg(&args.fps, {"--fps"}, {"FPS", "refresh rate", args::State::DefaultValue});
-    parser.kwarg(&args.pixel_format, {"--pix-format"}, {"{MJPG|YUYV|NV12}", "pixel format", args::State::DefaultValue});
-    parser.kwarg(&args.list_formats, {"-l", "--list-formats"}, {.arg_desc = "list supported formats of the video device", .state = args::State::Initialized, .no_error_check = true});
+    parser.kwarg(&args.video_device, {"-d", "--device"}, "PATH", "video device", {.state = args::State::DefaultValue});
+    parser.kwarg(&args.fps, {"--fps"}, "FPS", "refresh rate", {.state = args::State::DefaultValue});
+    parser.kwarg(&args.pixel_format, {"--pix-format"}, "{MJPG|YUYV|NV12}", "pixel format", {.state = args::State::DefaultValue});
+    parser.kwflag(&args.list_formats, {"-l", "--list-formats"}, "list supported formats of the video device", {.no_error_check = true});
     if(!parser.parse(argc, argv) || args.help) {
         print("usage: wlcam-uvc ", parser.get_help());
         exit(0);

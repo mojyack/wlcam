@@ -4,7 +4,6 @@
 #include <sys/ioctl.h>
 
 #include "../macros/unwrap.hpp"
-#include "../util/assert.hpp"
 #include "cio2.hpp"
 
 namespace ipu3::cio2 {
@@ -18,7 +17,7 @@ auto Sensor::enum_pad_codes() const -> std::optional<std::vector<uint32_t>> {
         mbus_enum.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 
         if(ioctl(fd.as_handle(), VIDIOC_SUBDEV_ENUM_MBUS_CODE, &mbus_enum) < 0) {
-            assert_o(errno == EINVAL);
+            ensure(errno == EINVAL);
             break;
         }
 
@@ -39,7 +38,7 @@ auto Sensor::enum_pad_sizes(const uint32_t mbus_code) const -> std::optional<std
         size_enum.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 
         if(ioctl(fd.as_handle(), VIDIOC_SUBDEV_ENUM_FRAME_SIZE, &size_enum) < 0) {
-            assert_o(errno == EINVAL || errno == ENOTTY);
+            ensure(errno == EINVAL || errno == ENOTTY);
             break;
         }
 
@@ -50,10 +49,10 @@ auto Sensor::enum_pad_sizes(const uint32_t mbus_code) const -> std::optional<std
 }
 
 auto Sensor::create(MediaDevice& media, const Entity& sensor) -> std::optional<Sensor> {
-    assert_o(sensor.function == MEDIA_ENT_F_CAM_SENSOR || sensor.function == MEDIA_ENT_F_PROC_VIDEO_ISP);
+    ensure(sensor.function == MEDIA_ENT_F_CAM_SENSOR || sensor.function == MEDIA_ENT_F_PROC_VIDEO_ISP);
     auto       fdh = FileDescriptor(open(sensor.dev_node.data(), O_RDWR));
     const auto fd  = fdh.as_handle();
-    assert_o(fd >= 0);
+    ensure(fd >= 0);
 
     auto pad_index = -1;
     for(auto p = 0u; p < sensor.pads.size(); p += 1) {
@@ -62,7 +61,7 @@ auto Sensor::create(MediaDevice& media, const Entity& sensor) -> std::optional<S
             break;
         }
     }
-    assert_o(pad_index != -1);
+    ensure(pad_index != -1);
 
     auto lens = std::optional<Lens>();
     if(!sensor.ancillary_entities.empty()) {
@@ -78,37 +77,37 @@ auto CIO2Device::init(Entity* const csi2) -> bool {
     auto& link = csi2->pads[0].links[0]; // link to sensor
 
     const auto [sensor_ent, _1] = media->find_pad_owner_and_index(link.src_pad_id);
-    assert_b(sensor_ent != nullptr);
+    ensure(sensor_ent != nullptr);
 
-    assert_b(media->configure_link(link, true));
+    ensure(media->configure_link(link, true));
 
     cio2 = FileDescriptor(open(csi2->dev_node.data(), O_RDWR));
-    assert_b(cio2.as_handle() >= 0);
+    ensure(cio2.as_handle() >= 0);
 
-    unwrap_ob_mut(sensor_obj, Sensor::create(*media, *sensor_ent));
+    unwrap_mut(sensor_obj, Sensor::create(*media, *sensor_ent));
     sensor = std::move(sensor_obj);
 
     const auto output_ent = media->find_entity_by_name(build_string("ipu3-cio2 ", csi2->name.back()));
     output                = FileDescriptor(open(output_ent->dev_node.data(), O_RDWR));
-    assert_b(output.as_handle() >= 0);
+    ensure(output.as_handle() >= 0);
 
     return true;
 }
 
 auto CIO2Device::init(const std::string_view entity_name) -> bool {
     const auto csi2 = media->find_entity_by_name(build_string(entity_name));
-    assert_b(csi2 != nullptr);
+    ensure(csi2 != nullptr);
 
     return init(csi2);
 }
 
 auto CIO2Device::get_formats() const -> std::optional<std::vector<Format>> {
     auto ret = std::vector<Format>();
-    unwrap_oo(pad_codes, sensor.enum_pad_codes());
+    unwrap(pad_codes, sensor.enum_pad_codes());
 
     for(const auto c : pad_codes) {
         auto& f = ret.emplace_back(Format{c, {}});
-        unwrap_oo(pad_sizes, sensor.enum_pad_sizes(c));
+        unwrap(pad_sizes, sensor.enum_pad_sizes(c));
         for(const auto r : pad_sizes) {
             f.sizes.emplace_back(r);
         }

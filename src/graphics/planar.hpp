@@ -5,7 +5,7 @@
 #pragma once
 #include "multitex.hpp"
 
-auto init_planar_shader() -> void;
+auto init_planar_shader() -> bool;
 
 class PlanarGraphic : public MultiTex {
   public:

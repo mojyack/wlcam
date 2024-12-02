@@ -23,6 +23,8 @@ struct WindowContext {
 
 class WindowCallbacks : public gawl::WindowNoTouchCallbacks {
   private:
+    static constexpr auto error_value = false;
+
     WindowContext    context;
     gawl::TextRender font;
     gawl::Point      cursor;
@@ -33,10 +35,11 @@ class WindowCallbacks : public gawl::WindowNoTouchCallbacks {
 
   public:
     auto refresh() -> void override;
-    auto on_pointer(const gawl::Point& pos) -> void override;
-    auto on_click(uint32_t button, gawl::ButtonState state) -> void override;
+    auto on_created(gawl::Window* window) -> coop::Async<bool> override;
+    auto on_pointer(gawl::Point pos) -> coop::Async<bool> override;
+    auto on_click(uint32_t button, gawl::ButtonState state) -> coop::Async<bool> override;
 
-    auto init() -> bool;
+    auto get_window() const -> gawl::Window*;
     auto get_context() -> WindowContext&;
 
     ~WindowCallbacks();

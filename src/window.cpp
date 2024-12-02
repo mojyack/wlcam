@@ -4,7 +4,6 @@
 #include "gawl/misc.hpp"
 #include "gawl/window.hpp"
 #include "macros/unwrap.hpp"
-#include "util/assert.hpp"
 #include "window.hpp"
 
 constexpr auto bottom_bar_height = 32;
@@ -64,23 +63,30 @@ auto WindowCallbacks::refresh() -> void {
     gawl::unmask_alpha();
 }
 
-auto WindowCallbacks::on_pointer(const gawl::Point& pos) -> void {
-    cursor = pos;
+auto WindowCallbacks::on_created(gawl::Window* /*window*/) -> coop::Async<bool> {
+    co_unwrap_v_mut(font_path, gawl::find_fontpath_from_name("Noto Sans CJK JP"));
+    font.init({std::move(font_path)}, bottom_bar_height * 0.8);
+    co_return true;
 }
 
-auto WindowCallbacks::on_click(const uint32_t button, const gawl::ButtonState state) -> void {
+auto WindowCallbacks::on_pointer(const gawl::Point pos) -> coop::Async<bool> {
+    cursor = pos;
+    co_return true;
+}
+
+auto WindowCallbacks::on_click(const uint32_t button, const gawl::ButtonState state) -> coop::Async<bool> {
     if(button != BTN_LEFT) {
-        return;
+        co_return true;
     }
 
     if(state != gawl::ButtonState::Press) {
-        return;
+        co_return true;
     }
 
     const auto [width, height] = window->get_window_size();
     if(cursor.y >= height - bottom_bar_height) {
         movie = !movie;
-        return;
+        co_return true;
     }
 
     if(movie) {
@@ -88,12 +94,11 @@ auto WindowCallbacks::on_click(const uint32_t button, const gawl::ButtonState st
     } else {
         context.camera_command = Command::TakePhoto;
     }
+    co_return true;
 }
 
-auto WindowCallbacks::init() -> bool {
-    unwrap_ob_mut(font_path, gawl::find_fontpath_from_name("Noto Sans CJK JP"));
-    font.init({std::move(font_path)}, bottom_bar_height * 0.8);
-    return true;
+auto WindowCallbacks::get_window() const -> gawl::Window* {
+    return window;
 }
 
 auto WindowCallbacks::get_context() -> WindowContext& {

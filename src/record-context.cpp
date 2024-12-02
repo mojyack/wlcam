@@ -1,6 +1,5 @@
 #include "record-context.hpp"
 #include "macros/assert.hpp"
-#include "util/assert.hpp"
 
 auto RecordContext::init(std::string path, const AVPixelFormat pix_fmt, const CommonArgs& args) -> bool {
     auto encoder_params = ff::EncoderParams{
@@ -27,16 +26,16 @@ auto RecordContext::init(std::string path, const AVPixelFormat pix_fmt, const Co
         },
         .ffmpeg_debug = args.ffmpeg_debug,
     };
-    assert_b(encoder.init(std::move(encoder_params)));
+    ensure(encoder.init(std::move(encoder_params)));
 
     auto recorder_params = pa::Params{
         .sample_format    = pa_parse_sample_format("float32"),
         .sample_rate      = uint32_t(args.audio_sample_rate),
         .samples_per_read = uint32_t(encoder.get_audio_samples_per_push()),
     };
-    assert_b(recorder.init(std::move(recorder_params)));
+    ensure(recorder.init(std::move(recorder_params)));
 
-    assert_b(converter.init(
+    ensure(converter.init(
         {int(args.audio_sample_rate), AV_SAMPLE_FMT_FLT, AV_CH_LAYOUT_STEREO},
         {int(args.audio_sample_rate), AV_SAMPLE_FMT_FLTP, AV_CH_LAYOUT_STEREO}));
 
@@ -53,14 +52,16 @@ loop:
         return true;
     }
     const auto samples = recorder.read_buffer();
-    assert_b(samples);
+    ensure(samples);
     const auto frame = converter.convert(samples->data(), num_samples_per_push);
-    assert_b(frame);
+    ensure(frame);
     encoder.add_audio(frame->get());
     goto loop;
 }
 
 RecordContext::~RecordContext() {
     running = false;
-    recorder_thread.join();
+    if(recorder_thread.joinable()) {
+        recorder_thread.join();
+    }
 }

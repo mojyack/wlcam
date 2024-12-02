@@ -7,7 +7,6 @@
 #include "jpeg.hpp"
 #include "macros/autoptr.hpp"
 #include "macros/unwrap.hpp"
-#include "util/assert.hpp"
 
 declare_autoptr(TJHandle, void, tjDestroy);
 
@@ -20,8 +19,7 @@ auto tjsample_to_ppc(const int sample) -> std::optional<std::array<int, 2>> {
     case TJSAMP_420:
         return std::array{2, 2};
     default:
-        WARN("unsupported sampling type ", sample);
-        return std::nullopt;
+        bail("unsupported sampling type ", sample);
     }
 }
 
@@ -35,8 +33,7 @@ auto ppc_to_tjsample(const int ppc_x, const int ppc_y) -> std::optional<int> {
             return TJSAMP_420;
         }
     }
-    WARN("unsupported ppc ", ppc_x, " ", ppc_y);
-    return std::nullopt;
+    bail("unsupported ppc ", ppc_x, " ", ppc_y);
 }
 } // namespace
 
@@ -68,13 +65,13 @@ loop_sos:
 
 auto decode_jpeg_to_yuvp(const std::byte* const ptr, const size_t len, const size_t downscale_factor) -> std::optional<DecodeResult> {
     auto tj = AutoTJHandle(tjInitDecompress());
-    assert_o(tj.get() != NULL);
+    ensure(tj.get() != NULL);
 
     auto width     = 0;
     auto height    = 0;
     auto subsample = 0;
-    assert_o(tjDecompressHeader2(tj.get(), (unsigned char*)ptr, len, &width, &height, &subsample) == 0);
-    unwrap_oo(ppc, tjsample_to_ppc(subsample));
+    ensure(tjDecompressHeader2(tj.get(), (unsigned char*)ptr, len, &width, &height, &subsample) == 0);
+    unwrap(ppc, tjsample_to_ppc(subsample));
     const auto [ppc_x, ppc_y] = ppc;
 
     const auto bufsize_y = tjPlaneSizeYUV(0, width / downscale_factor, 0, height / downscale_factor, subsample);
@@ -85,7 +82,7 @@ auto decode_jpeg_to_yuvp(const std::byte* const ptr, const size_t len, const siz
     auto buf_u = std::vector<std::byte>(bufsize_u);
     auto buf_v = std::vector<std::byte>(bufsize_v);
     auto buf   = std::array{buf_y.data(), buf_u.data(), buf_v.data()};
-    assert_o(tjDecompressToYUVPlanes(tj.get(), (unsigned char*)ptr, len, (unsigned char**)(buf.data()), width / downscale_factor, NULL, height / downscale_factor, 0) == 0);
+    ensure(tjDecompressToYUVPlanes(tj.get(), (unsigned char*)ptr, len, (unsigned char**)(buf.data()), width / downscale_factor, NULL, height / downscale_factor, 0) == 0);
 
     return DecodeResult{
         width,
@@ -100,20 +97,20 @@ auto decode_jpeg_to_yuvp(const std::byte* const ptr, const size_t len, const siz
 
 auto encode_yuvp_to_jpeg(const int width, const int height, const int stride, const int ppc_x, const int ppc_y, const std::byte* const y, const std::byte* const u, const std::byte* const v) -> std::optional<EncodeResult> {
     auto tj = AutoTJHandle(tjInitCompress());
-    assert_o(tj.get() != NULL);
+    ensure(tj.get() != NULL);
 
     auto planes  = std::array<const std::byte*, 3>{y, u, v};
     auto strides = std::array<int, 3>{stride, stride / ppc_x, stride / ppc_x};
     auto buf     = (unsigned char*)(nullptr);
     auto size    = size_t(0);
-    unwrap_oo(tjsample, ppc_to_tjsample(ppc_x, ppc_y));
-    assert_o(tjCompressFromYUVPlanes(tj.get(),
-                                     (const unsigned char**)(planes.data()),
-                                     width,
-                                     strides.data(),
-                                     height,
-                                     tjsample,
-                                     &buf, &size, 100, 0) == 0);
+    unwrap(tjsample, ppc_to_tjsample(ppc_x, ppc_y));
+    ensure(tjCompressFromYUVPlanes(tj.get(),
+                                   (const unsigned char**)(planes.data()),
+                                   width,
+                                   strides.data(),
+                                   height,
+                                   tjsample,
+                                   &buf, &size, 100, 0) == 0);
     return EncodeResult{Buffer((std::byte*)buf), size};
 }
 } // namespace jpg

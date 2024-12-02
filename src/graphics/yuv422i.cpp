@@ -28,11 +28,11 @@ auto yuv422i_fragment_shader_source = R"glsl(
     }
 )glsl";
 
-auto shader = (gawl::impl::GraphicShader*)(nullptr);
+auto shader = gawl::impl::GraphicShader();
 } // namespace
 
-auto init_yuv422i_shader() -> void {
-    shader = new gawl::impl::GraphicShader(gawl::impl::graphic_vertex_shader_source, yuv422i_fragment_shader_source);
+auto init_yuv422i_shader() -> bool {
+    return shader.init(gawl::impl::graphic_vertex_shader_source, yuv422i_fragment_shader_source);
 }
 
 auto YUV422iGraphic::update_texture(const int width, const int height, const int stride, const std::byte* const yuv) -> void {
@@ -47,5 +47,5 @@ auto YUV422iGraphic::update_texture(const int width, const int height, const int
 }
 
 YUV422iGraphic::YUV422iGraphic()
-    : GraphicBase(*::shader) {
+    : GraphicBase(::shader) {
 }

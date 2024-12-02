@@ -10,7 +10,6 @@ extern "C" {
 
 #include "encoder.hpp"
 #include "macros/unwrap.hpp"
-#include "util/assert.hpp"
 
 namespace ff {
 declare_autoptr(AVBufferSrcParameters, AVBufferSrcParameters, av_free);
@@ -46,9 +45,9 @@ auto Encoder::create_video_filter(const VideoParams& params) -> std::optional<Vi
     // parse to filter
     auto filter = VideoFilter();
     filter.graph.reset(avfilter_graph_alloc());
-    assert_o(filter.graph.get() != NULL);
+    ensure(filter.graph.get() != NULL);
 
-    assert_o(avfilter_graph_parse_ptr(filter.graph.get(), filter_desc.data(), NULL, NULL, NULL) >= 0);
+    ensure(avfilter_graph_parse_ptr(filter.graph.get(), filter_desc.data(), NULL, NULL, NULL) >= 0);
 
     filter.source_context = avfilter_graph_get_filter(filter.graph.get(), "buffer@source");
     filter.sink_context   = avfilter_graph_get_filter(filter.graph.get(), "buffersink@sink");
@@ -58,7 +57,7 @@ auto Encoder::create_video_filter(const VideoParams& params) -> std::optional<Vi
         hwupload->hw_device_ctx = av_buffer_ref(hw_bufs.device.get());
     }
 
-    assert_o(avfilter_graph_config(filter.graph.get(), NULL) >= 0);
+    ensure(avfilter_graph_config(filter.graph.get(), NULL) >= 0);
 
     // copy pipline output's format to encoder input
     const auto filter_output                 = filter.sink_context->inputs[0];
@@ -80,11 +79,11 @@ auto Encoder::init_video_stream(const VideoParams& params) -> bool {
         options.reset(ptr);
     }
 
-    unwrap_pb(codec, avcodec_find_encoder_by_name(params.codec.name.data()));
+    unwrap(codec, avcodec_find_encoder_by_name(params.codec.name.data()));
     video_stream = avformat_new_stream(format_context.get(), &codec);
-    assert_b(video_stream != NULL);
+    ensure(video_stream != NULL);
     video_codec_context = avcodec_alloc_context3(&codec);
-    assert_b(video_codec_context != NULL);
+    ensure(video_codec_context != NULL);
     video_codec_context->width        = params.width;
     video_codec_context->height       = params.height;
     video_codec_context->time_base    = us_rational;
@@ -95,12 +94,12 @@ auto Encoder::init_video_stream(const VideoParams& params) -> bool {
     if(use_vaapi) {
         auto       device_context = (AVBufferRef*)(nullptr);
         const auto render_node    = params.render_node.empty() ? NULL : params.render_node.data();
-        assert_b(av_hwdevice_ctx_create(&device_context, AV_HWDEVICE_TYPE_VAAPI, render_node, NULL, 0) == 0);
+        ensure(av_hwdevice_ctx_create(&device_context, AV_HWDEVICE_TYPE_VAAPI, render_node, NULL, 0) == 0);
         hw_bufs.device.reset(device_context);
     }
 
     {
-        unwrap_ob_mut(filter, create_video_filter(params));
+        unwrap_mut(filter, create_video_filter(params));
         video_filter = std::move(filter);
     }
     if(this->params.ffmpeg_debug) {
@@ -119,18 +118,18 @@ auto Encoder::init_video_stream(const VideoParams& params) -> bool {
     auto       options_ptr = options.release();
     const auto ret         = avcodec_open2(video_codec_context, &codec, &options_ptr);
     options.reset(options_ptr);
-    assert_b(ret >= 0);
+    ensure(ret >= 0);
 
     if(use_vaapi) {
         hw_bufs.frame_context = av_hwframe_ctx_alloc(hw_bufs.device.get());
-        assert_b(hw_bufs.frame_context != NULL);
+        ensure(hw_bufs.frame_context != NULL);
 
         video_codec_context->hw_device_ctx = hw_bufs.frame_context;
         hw_bufs.frame.reset(av_frame_alloc());
-        assert_b(hw_bufs.frame.get() != NULL);
+        ensure(hw_bufs.frame.get() != NULL);
     }
 
-    assert_b(avcodec_parameters_from_context(video_stream->codecpar, video_codec_context) >= 0);
+    ensure(avcodec_parameters_from_context(video_stream->codecpar, video_codec_context) >= 0);
     return true;
 }
 
@@ -142,11 +141,11 @@ auto Encoder::init_audio_stream(const AudioParams& params) -> bool {
         options.reset(ptr);
     }
 
-    unwrap_pb(codec, avcodec_find_encoder_by_name(params.codec.name.data()));
+    unwrap(codec, avcodec_find_encoder_by_name(params.codec.name.data()));
     audio_stream = avformat_new_stream(format_context.get(), &codec);
-    assert_b(audio_stream != NULL);
+    ensure(audio_stream != NULL);
     audio_codec_context = avcodec_alloc_context3(&codec);
-    assert_b(audio_codec_context != NULL);
+    ensure(audio_codec_context != NULL);
     audio_codec_context->ch_layout   = params.channel_layout;
     audio_codec_context->sample_fmt  = params.sample_fmt;
     audio_codec_context->sample_rate = params.sample_rate;
@@ -161,28 +160,28 @@ auto Encoder::init_audio_stream(const AudioParams& params) -> bool {
     auto options_ptr = options.release();
     ret              = avcodec_open2(audio_codec_context, &codec, &options_ptr);
     options.reset(options_ptr);
-    assert_b(ret >= 0);
+    ensure(ret >= 0);
 
     ret = avcodec_parameters_from_context(audio_stream->codecpar, audio_codec_context);
-    assert_b(ret >= 0);
+    ensure(ret >= 0);
 
     return true;
 }
 
 auto Encoder::init_codecs() -> bool {
     if(params.video) {
-        assert_b(init_video_stream(*params.video));
+        ensure(init_video_stream(*params.video));
     }
     if(params.audio) {
-        assert_b(init_audio_stream(*params.audio));
+        ensure(init_audio_stream(*params.audio));
     }
     if(params.ffmpeg_debug) {
         av_dump_format(format_context.get(), 0, params.output.data(), 1);
     }
-    assert_b(avio_open(&format_context->pb, params.output.data(), AVIO_FLAG_WRITE) >= 0);
+    ensure(avio_open(&format_context->pb, params.output.data(), AVIO_FLAG_WRITE) >= 0);
 
     auto dummy = (AVDictionary*)(nullptr);
-    assert_b(avformat_write_header(format_context.get(), &dummy) >= 0);
+    ensure(avformat_write_header(format_context.get(), &dummy) >= 0);
     av_dict_free(&dummy);
 
     return true;
@@ -198,13 +197,13 @@ auto Encoder::init(EncoderParams params_) -> bool {
     avdevice_register_all();
 
     output_format = av_guess_format(NULL, params.output.data(), NULL);
-    assert_b(output_format != NULL);
+    ensure(output_format != NULL);
 
     auto fmt_ctx = (AVFormatContext*)(nullptr);
-    assert_b(avformat_alloc_output_context2(&fmt_ctx, NULL, NULL, params.output.data()) >= 0);
+    ensure(avformat_alloc_output_context2(&fmt_ctx, NULL, NULL, params.output.data()) >= 0);
     format_context.reset(fmt_ctx);
 
-    assert_b(init_codecs());
+    ensure(init_codecs());
 
     init_done = true;
     return true;
@@ -216,7 +215,7 @@ auto Encoder::encode(AVFrame* const frame, AVPacket* packet, bool video) -> bool
     {
         const auto ctx   = video ? video_codec_context : audio_codec_context;
         const auto guard = std::lock_guard(video ? video_encode_lock : audio_encode_lock);
-        assert_b(avcodec_send_frame(ctx, frame) >= 0);
+        ensure(avcodec_send_frame(ctx, frame) >= 0);
         if(const auto ret = avcodec_receive_packet(ctx, packet); ret < 0) {
             return ret == AVERROR(EAGAIN) || ret == AVERROR_EOF;
         }
@@ -225,7 +224,7 @@ auto Encoder::encode(AVFrame* const frame, AVPacket* packet, bool video) -> bool
     packet->stream_index = stream->index;
     {
         const auto format_guard = std::lock_guard(format_lock);
-        assert_b(av_interleaved_write_frame(format_context.get(), packet) >= 0);
+        ensure(av_interleaved_write_frame(format_context.get(), packet) >= 0);
     }
     return true;
 }
@@ -234,27 +233,27 @@ auto Encoder::push_frame(AutoAVFrame frame, const int usec) -> bool {
     frame->pts = usec;
 
     auto filtered = AutoAVFrame(av_frame_alloc());
-    assert_b(filtered.get() != NULL);
+    ensure(filtered.get() != NULL);
     {
         auto filter_guard = std::lock_guard(filter_lock);
-        assert_b(av_buffersrc_add_frame_flags(video_filter.source_context, frame.get(), 0) >= 0);
-        assert_b(av_buffersink_get_frame(video_filter.sink_context, filtered.get()) >= 0);
+        ensure(av_buffersrc_add_frame_flags(video_filter.source_context, frame.get(), 0) >= 0);
+        ensure(av_buffersink_get_frame(video_filter.sink_context, filtered.get()) >= 0);
     }
     filtered->pict_type = AV_PICTURE_TYPE_NONE;
 
     auto pkt  = AutoAVPacket(av_packet_alloc());
     pkt->data = NULL;
     pkt->size = 0;
-    assert_b(encode(filtered.get(), pkt.get(), true));
+    ensure(encode(filtered.get(), pkt.get(), true));
     return true;
 }
 
 auto Encoder::add_frame(std::span<const Plane> planes, const int usec) -> bool {
-    unwrap_ob(params, this->params.video);
-    assert_b(planes.size() <= AV_NUM_DATA_POINTERS);
+    unwrap(params, this->params.video);
+    ensure(planes.size() <= AV_NUM_DATA_POINTERS);
 
     auto frame = AutoAVFrame(av_frame_alloc());
-    assert_b(frame.get() != NULL);
+    ensure(frame.get() != NULL);
 
     for(auto i = 0u; i < planes.size(); i += 1) {
         frame->data[i]     = std::bit_cast<uint8_t*>(planes[i].data);
@@ -279,11 +278,11 @@ auto Encoder::add_audio(AVFrame* frame) -> bool {
 }
 
 auto Encoder::add_audio(const std::span<const std::byte* const> buffers) -> bool {
-    unwrap_ob(params, this->params.audio);
-    assert_b(buffers.size() == size_t(audio_codec_context->ch_layout.nb_channels));
+    unwrap(params, this->params.audio);
+    ensure(buffers.size() == size_t(audio_codec_context->ch_layout.nb_channels));
 
     auto frame = AutoAVFrame(av_frame_alloc());
-    assert_b(frame.get() != NULL);
+    ensure(frame.get() != NULL);
 
     for(auto i = 0; i < audio_codec_context->ch_layout.nb_channels; i += 1) {
         frame->data[i] = std::bit_cast<uint8_t*>(buffers[i]);
