@@ -128,28 +128,28 @@ auto MediaDevice::disable_all_links() -> bool {
 }
 
 auto MediaDevice::debug_print() const -> void {
-    print("driver: ", driver);
+    std::println("driver: {}", driver);
     for(auto& e : entities) {
-        print("  entity ", e.id, ": ", e.name, " ", e.dev_node);
+        std::println("  entity {}: {} {}", e.id, e.name, e.dev_node);
         // continue;
         for(auto& p : e.pads) {
-            print("    pad ", p.id);
+            std::println("    pad {}", p.id);
             for(auto& l : p.links) {
                 if(l.src_pad_id == p.id) {
                     const auto& other_name = std::get<0>(find_pad_owner_and_index(l.sink_pad_id))->name;
-                    print("      link ", l.id, ": -> ", l.sink_pad_id, "(", other_name, ")");
+                    std::println("      link {}: -> {}({})", l.id, l.sink_pad_id, other_name);
                 } else {
                     const auto& other_name = std::get<0>(find_pad_owner_and_index(l.src_pad_id))->name;
-                    print("      link ", l.id, ": <- ", l.src_pad_id, "(", other_name, ")");
+                    std::println("      link {}: <- {}({})", l.id, l.src_pad_id, other_name);
                 }
             }
         }
 
         if(!e.ancillary_entities.empty()) {
-            print("    ancillary");
+            std::println("    ancillary");
             for(const auto anc : e.ancillary_entities) {
                 const auto other = const_cast<MediaDevice*>(this)->find_entity_by_id(anc);
-                print("      ", other->id, "(", other->name, ")");
+                std::println("      {}({})", other->id, other->name);
             }
         }
     }

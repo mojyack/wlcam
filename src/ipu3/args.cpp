@@ -4,12 +4,13 @@
 #include "../macros/assert.hpp"
 #include "../macros/unwrap.hpp"
 #include "../util/charconv.hpp"
+#include "../util/split.hpp"
 #include "args.hpp"
 
 namespace args {
 using Params = ::ipu3::Args::Params;
 template <>
-auto from_string<Params>(const char* str) -> std::optional<Params> {
+auto from_string<Params>(const char* const str) -> std::optional<Params> {
     auto elms = split(str, ",");
     auto ret  = Params(elms.size());
     for(auto i = 0u; i < elms.size(); i += 1) {
@@ -36,7 +37,7 @@ auto to_string<Params>(const Params& data) -> std::string {
 } // namespace args
 
 namespace ipu3 {
-auto Args::parse(const int argc, const char* const argv[]) -> std::optional<Args> {
+auto Args::parse(const int argc, const char* const* const argv) -> std::optional<Args> {
     auto args   = Args();
     auto parser = args::Parser<Args::Params>();
     setup_common_args(args, parser);
@@ -49,7 +50,7 @@ auto Args::parse(const int argc, const char* const argv[]) -> std::optional<Args
     parser.kwarg(&args.sensor_height, {"--sensor-height"}, "HEIGHT", "device profile");
     parser.kwarg(&args.ipu3_params, {"--params"}, "KEY=VALUE,...", "ipu3 parameter, wb_gains.r, gamma, etc.", {.state = args::State::Initialized});
     if(!parser.parse(argc, argv) || args.help) {
-        print("usage: wlcam-ipu3 ", parser.get_help());
+        std::println("usage: wlcam-ipu3 {}", parser.get_help());
         exit(0);
     }
     return args;

@@ -1,11 +1,14 @@
 #pragma once
+#include <iostream>
+#include <print>
+
 #include "util/charconv.hpp"
-#include "util/print.hpp"
 
 namespace stdio {
 inline auto read_line(const std::optional<std::string_view> prompt = std::nullopt) -> std::string {
     if(prompt) {
-        std::cout << *prompt;
+        std::print("{}", *prompt);
+        std::flush(std::cout);
     }
     auto line = std::string();
     std::getline(std::cin, line);
@@ -19,7 +22,7 @@ inline auto read_stdin(const std::optional<std::string_view> prompt = std::nullo
         if(const auto o = from_chars<T>(line)) {
             return o.value();
         } else {
-            print("invalid input");
+            std::println("invalid input");
             continue;
         }
     }

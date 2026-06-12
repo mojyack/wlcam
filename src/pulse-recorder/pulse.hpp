@@ -6,7 +6,7 @@
 #include <pulse/error.h>
 #include <pulse/simple.h>
 
-#include "macros/autoptr.hpp"
+#include "../macros/autoptr.hpp"
 
 namespace pa {
 declare_autoptr(PASimple, pa_simple, pa_simple_free);

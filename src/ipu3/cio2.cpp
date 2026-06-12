@@ -87,7 +87,7 @@ auto CIO2Device::init(Entity* const csi2) -> bool {
     unwrap_mut(sensor_obj, Sensor::create(*media, *sensor_ent));
     sensor = std::move(sensor_obj);
 
-    const auto output_ent = media->find_entity_by_name(build_string("ipu3-cio2 ", csi2->name.back()));
+    const auto output_ent = media->find_entity_by_name(std::format("ipu3-cio2 {}", csi2->name.back()));
     output                = FileDescriptor(open(output_ent->dev_node.data(), O_RDWR));
     ensure(output.as_handle() >= 0);
 
@@ -95,7 +95,7 @@ auto CIO2Device::init(Entity* const csi2) -> bool {
 }
 
 auto CIO2Device::init(const std::string_view entity_name) -> bool {
-    const auto csi2 = media->find_entity_by_name(build_string(entity_name));
+    const auto csi2 = media->find_entity_by_name(entity_name);
     ensure(csi2 != nullptr);
 
     return init(csi2);

@@ -23,7 +23,7 @@ class UVCWindowCallbacks : public WindowCallbacks {
     }
 };
 
-auto main(const int argc, const char* const argv[]) -> int {
+auto main(const int argc, const char* const* const argv) -> int {
     unwrap(args, Args::parse(argc, argv));
 
     const auto fdh = FileDescriptor(open(args.video_device, O_RDWR));
@@ -79,7 +79,8 @@ auto main(const int argc, const char* const argv[]) -> int {
     };
 
     auto runner = coop::Runner();
-    runner.push_task(app.run(), app.open_window({.title = "wlcam"}, std::move(cbs)));
+    runner.push_task(app.run());
+    runner.push_task(app.open_window({.title = "wlcam"}, std::move(cbs)));
     runner.run();
 
     return 0;

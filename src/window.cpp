@@ -28,7 +28,7 @@ auto WindowCallbacks::refresh() -> void {
 
     // render
     gawl::clear_screen({0, 0, 0, 0});
-    const auto [width, height] = window->get_window_size();
+    const auto [width, height] = window->window_size;
     const auto screen_rect     = gawl::Rectangle{{0, 0}, {1. * width, 1. * height}};
     const auto frame           = context.frame;
     if(frame) {
@@ -46,9 +46,9 @@ auto WindowCallbacks::refresh() -> void {
     // status bar
     const auto bar_rect = gawl::Rectangle{{0, 1. * height - bottom_bar_height}, screen_rect.b};
     gawl::draw_rect(*window, bar_rect, {0, 0, 0, 0.7});
-    font.draw_fit_rect(*window, bar_rect, {1, 1, 1, 1}, movie ? "video" : "photo", 0, gawl::Align::Left, gawl::Align::Center);
+    font.draw_fit_rect(*window, bar_rect, {1, 1, 1, 1}, movie ? "video" : "photo", {.align_x = gawl::Align::Left});
     if(!context.error_message.empty()) {
-        font.draw_fit_rect(*window, bar_rect, {1, 0, 0, 1}, context.error_message.data(), 0, gawl::Align::Right, gawl::Align::Center);
+        font.draw_fit_rect(*window, bar_rect, {1, 0, 0, 1}, context.error_message.data(), {.align_x = gawl::Align::Right});
     } else {
         if(recording) {
             const auto ms  = record_timer.elapsed<std::chrono::milliseconds>();
@@ -56,7 +56,7 @@ auto WindowCallbacks::refresh() -> void {
             const auto min = sec / 60;
             auto       buf = std::array<char, 10>();
             snprintf(buf.data(), buf.size(), "%02d:%02d.%03d", std::min(int(min), 99), int(sec % 60), int(ms % 1000));
-            font.draw_fit_rect(*window, bar_rect, {1, 1, 1, 1}, buf.data(), 0, gawl::Align::Right, gawl::Align::Center);
+            font.draw_fit_rect(*window, bar_rect, {1, 1, 1, 1}, buf.data(), {.align_x = gawl::Align::Right});
         }
     }
 
@@ -83,7 +83,7 @@ auto WindowCallbacks::on_click(const uint32_t button, const gawl::ButtonState st
         co_return true;
     }
 
-    const auto [width, height] = window->get_window_size();
+    const auto [width, height] = window->window_size;
     if(cursor.y >= height - bottom_bar_height) {
         movie = !movie;
         co_return true;

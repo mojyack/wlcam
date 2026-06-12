@@ -1,5 +1,5 @@
 #include "converter.hpp"
-#include "macros/assert.hpp"
+#include "../macros/assert.hpp"
 
 namespace ff {
 auto AudioConverter::init(Format from_, Format to_) -> bool {

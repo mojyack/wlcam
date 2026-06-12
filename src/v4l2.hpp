@@ -17,7 +17,7 @@ struct Buffer {
     void*  start = nullptr;
     size_t length;
 
-    Buffer(){};
+    Buffer() {}
 
     Buffer(Buffer&& other) {
         std::swap(start, other.start);

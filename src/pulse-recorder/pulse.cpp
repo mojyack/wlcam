@@ -1,5 +1,5 @@
 #include "pulse.hpp"
-#include "macros/assert.hpp"
+#include "../macros/assert.hpp"
 
 namespace pa {
 constexpr auto channels = 2;

@@ -17,6 +17,6 @@ struct Args : CommonArgs {
     int         sensor_height;
     Params      ipu3_params;
 
-    static auto parse(int argc, const char* const argv[]) -> std::optional<Args>;
+    static auto parse(int argc, const char* const* argv) -> std::optional<Args>;
 };
 } // namespace ipu3

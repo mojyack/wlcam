@@ -7,25 +7,24 @@
 #include "../macros/unwrap.hpp"
 #include "../media-device.hpp"
 #include "../udev.hpp"
-#include "../util/print.hpp"
 #include "cio2.hpp"
 #include "imgu.hpp"
 
 namespace {
 auto read_sized(const std::string_view prompt, const size_t limit) -> size_t {
     while(true) {
-        print(prompt, " [0..", limit - 1, "]: ");
+        std::println("{} [0..{}]: ", prompt, limit - 1);
         const auto i = stdio::read_stdin<size_t>();
         if(i < limit) {
             return i;
         }
-        print("invalid input");
+        std::println("invalid input");
     }
 }
 } // namespace
 
-auto run() -> bool {
-    print("searching for ipu3 devices");
+auto main() -> int {
+    std::println("searching for ipu3 devices");
 
     unwrap(udev_devices, dev::enumerate());
     auto csi2_devices = std::vector<MediaDevice>();
@@ -37,20 +36,20 @@ auto run() -> bool {
 
         unwrap_mut(media_device, parse_device(devnode.c_str(), udev_devices));
         if(media_device.find_entity_by_name("ipu3-csi2 0") != nullptr) {
-            print("found csi2");
+            std::println("found csi2");
             csi2_devices.emplace_back(std::move(media_device));
         } else if(media_device.find_entity_by_name("ipu3-imgu 0") != nullptr) {
-            print("found imgu");
+            std::println("found imgu");
             imgu_devices.emplace_back(std::move(media_device));
         }
     }
 
     if(csi2_devices.empty()) {
-        print("no csi2 device found");
+        std::println("no csi2 device found");
         return 1;
     }
     if(imgu_devices.empty()) {
-        print("no imgu device found");
+        std::println("no imgu device found");
         return 1;
     }
 
@@ -62,7 +61,7 @@ auto run() -> bool {
 
     auto sensors = std::vector<const Entity*>();
     for(auto i = 0; i < 4; i += 1) {
-        const auto csi2 = csi2_device.find_entity_by_name(build_string("ipu3-csi2 ", i));
+        const auto csi2 = csi2_device.find_entity_by_name(std::format("ipu3-csi2 {}", i));
         if(csi2 == nullptr) {
             continue;
         }
@@ -79,7 +78,7 @@ auto run() -> bool {
         sensors.emplace_back(sensor);
     }
 
-    print("the csi2 has ", sensors.size(), " sensors");
+    std::println("the csi2 has {} sensors", sensors.size());
     for(auto i = 0u; i < sensors.size(); i += 1) {
         print("  ", i, " ", sensors[i]->name);
     }
@@ -95,22 +94,22 @@ auto run() -> bool {
     cio2.init(const_cast<Entity*>(csi2_entity));
 
     unwrap(sensor_formats, cio2.get_formats());
-    print("the sensor suppors ", sensor_formats.size(), " formats");
+    std::println("the sensor suppors {} formats", sensor_formats.size());
     for(auto i = 0u; i < sensor_formats.size(); i += 1) {
-        print("  ", i, " ", sensor_formats[i].code);
+        std::println("  {} {}", i, sensor_formats[i].code);
     }
     const auto& sensor_format = sensor_formats[read_sized("select media bus code", sensor_formats.size())];
 
-    print("the sensor suppors ", sensor_format.sizes.size(), " output sizes");
+    std::println("the sensor suppors {} output sizes", sensor_format.sizes.size());
     for(auto i = 0u; i < sensor_format.sizes.size(); i += 1) {
-        print("  ", i, " ", sensor_format.sizes[i].max.width, "x", sensor_format.sizes[i].max.height);
+        std::println("  {} {}x{}", i, sensor_format.sizes[i].max.width, sensor_format.sizes[i].max.height);
     }
     const auto& sensor_format_size = sensor_format.sizes[read_sized("select output size", sensor_format.sizes.size())];
 
     const auto width  = stdio::read_stdin<size_t>("imgu output width: ");
     const auto height = stdio::read_stdin<size_t>("imgu output height: ");
 
-    print(
+    std::println(
         "launch wlcam-ipu3 with these arguments:\n",
         " --cio2 ", csi2_device.dev_node,
         " --imgu ", imgu_device.dev_node,
@@ -122,15 +121,11 @@ auto run() -> bool {
         " --width ", width,
         " --height ", height);
 
-    print("controls available for these devices:");
-    print("  ", cio2.sensor.dev_node);
+    std::println("controls available for these devices:");
+    std::println("  {}", cio2.sensor.dev_node);
     if(cio2.sensor.lens) {
-        print("  ", cio2.sensor.lens->dev_node);
+        std::println("  {}", cio2.sensor.lens->dev_node);
     }
 
     return 0;
-}
-
-auto main() -> int {
-    return run() ? 0 : 1;
 }

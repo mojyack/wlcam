@@ -1,7 +1,6 @@
 #pragma once
 #include <chrono>
-
-#include "util/print.hpp"
+#include <print>
 
 class Timer {
   private:
@@ -34,7 +33,7 @@ class FPSTimer {
         if(timer.elapsed<std::chrono::milliseconds>() < 1000) {
             return;
         }
-        print("fps: ", count);
+        std::println("fps: {}", count);
         timer.reset();
         count = 0;
     }

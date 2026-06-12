@@ -12,23 +12,23 @@ auto ImgUDevice::init(MediaDevice& media, const std::string_view entity_name) ->
     this->imgu = FileDescriptor(open(imgu.dev_node.data(), O_RDWR));
     ensure(this->imgu.as_handle() >= 0);
 
-    auto& input = *media.find_entity_by_name(build_string(entity_name, " input"));
+    auto& input = *media.find_entity_by_name(std::format("{} input", entity_name));
     this->input = FileDescriptor(open(input.dev_node.data(), O_RDWR));
     ensure(this->input.as_handle() >= 0);
 
-    auto& output = *media.find_entity_by_name(build_string(entity_name, " output"));
+    auto& output = *media.find_entity_by_name(std::format("{} output", entity_name));
     this->output = FileDescriptor(open(output.dev_node.data(), O_RDWR));
     ensure(this->output.as_handle() >= 0);
 
-    auto& parameters = *media.find_entity_by_name(build_string(entity_name, " parameters"));
+    auto& parameters = *media.find_entity_by_name(std::format("{} parameters", entity_name));
     this->parameters = FileDescriptor(open(parameters.dev_node.data(), O_RDWR));
     ensure(this->parameters.as_handle() >= 0);
 
-    auto& viewfinder = *media.find_entity_by_name(build_string(entity_name, " viewfinder"));
+    auto& viewfinder = *media.find_entity_by_name(std::format("{} viewfinder", entity_name));
     this->viewfinder = FileDescriptor(open(viewfinder.dev_node.data(), O_RDWR));
     ensure(this->viewfinder.as_handle() >= 0);
 
-    auto& stat = *media.find_entity_by_name(build_string(entity_name, " 3a stat"));
+    auto& stat = *media.find_entity_by_name(std::format("{} 3a stat", entity_name));
     this->stat = FileDescriptor(open(stat.dev_node.data(), O_RDWR));
     ensure(this->stat.as_handle() >= 0);
 

@@ -2,6 +2,7 @@
 
 #include "graphics-wrapper.hpp"
 #include "macros/unwrap.hpp"
+#include "util/file-io.hpp"
 #include "yuv.hpp"
 
 namespace {
@@ -14,10 +15,9 @@ auto save_yuvp_frame(const char* const path, const int width, const int height, 
 } // namespace
 
 // JpegFrame
-auto JpegFrame::save_to_jpeg(const ByteArray buf, std::string_view const path) -> bool {
-    auto       file = std::ofstream(path, std::ios::out | std::ios::binary);
+auto JpegFrame::save_to_jpeg(const ByteArray buf, const char* const path) -> bool {
     const auto size = jpg::calc_jpeg_size(buf.data());
-    file.write((const char*)buf.data(), size);
+    ensure(write_file(path, ByteArray(buf.data(), size)));
     return true;
 }
 
@@ -55,9 +55,9 @@ auto JpegFrame::get_planes(ByteArray /*buf*/) const -> std::optional<std::vector
 }
 
 // YUV422IFrame
-auto YUV422IFrame::save_to_jpeg(const ByteArray buf, std::string_view const path) -> bool {
+auto YUV422IFrame::save_to_jpeg(const ByteArray buf, const char* const path) -> bool {
     const auto [ybuf, ubuf, vbuf] = yuv::yuv422i_to_yuv422p(buf.data(), width, height, stride);
-    ensure(save_yuvp_frame(path.data(), width, height, stride / 2, 2, 1, ybuf.data(), ubuf.data(), vbuf.data()));
+    ensure(save_yuvp_frame(path, width, height, stride / 2, 2, 1, ybuf.data(), ubuf.data(), vbuf.data()));
     return true;
 }
 
@@ -86,13 +86,13 @@ YUV422IFrame::YUV422IFrame(const int width, const int height, const int stride)
 }
 
 // YUV420SPFrame
-auto YUV420SPFrame::save_to_jpeg(const ByteArray buf, std::string_view const path) -> bool {
+auto YUV420SPFrame::save_to_jpeg(const ByteArray buf, const char* const path) -> bool {
     const auto uvbuf = buf.data() + stride * height;
     auto       ubuf  = std::vector<std::byte>(height / 4 * width);
     auto       vbuf  = std::vector<std::byte>(height / 4 * width);
 
     yuv::yuv420sp_uvsp_to_uvp(uvbuf, ubuf.data(), vbuf.data(), width, height, stride);
-    ensure(save_yuvp_frame(path.data(), width, height, stride, 2, 2, buf.data(), ubuf.data(), vbuf.data()));
+    ensure(save_yuvp_frame(path, width, height, stride, 2, 2, buf.data(), ubuf.data(), vbuf.data()));
     return true;
 }
 

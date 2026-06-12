@@ -21,7 +21,7 @@ auto to_string<Args::FourCC>(const Args::FourCC& data) -> std::string {
 }
 } // namespace args
 
-auto Args::parse(const int argc, const char* const argv[]) -> std::optional<Args> {
+auto Args::parse(const int argc, const char* const* const argv) -> std::optional<Args> {
     auto args   = Args();
     auto parser = args::Parser<FourCC>();
     setup_common_args(args, parser);
@@ -30,7 +30,7 @@ auto Args::parse(const int argc, const char* const argv[]) -> std::optional<Args
     parser.kwarg(&args.pixel_format, {"--pix-format"}, "{MJPG|YUYV|NV12}", "pixel format", {.state = args::State::DefaultValue});
     parser.kwflag(&args.list_formats, {"-l", "--list-formats"}, "list supported formats of the video device", {.no_error_check = true});
     if(!parser.parse(argc, argv) || args.help) {
-        print("usage: wlcam-uvc ", parser.get_help());
+        std::println("usage: wlcam-uvc {}", parser.get_help());
         exit(0);
     }
     return args;

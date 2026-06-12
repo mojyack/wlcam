@@ -141,7 +141,7 @@ auto main(const int argc, const char* const argv[]) -> int {
         output_mmap_ptrs[i] = mmap(NULL, imgu_output_buffers[i].length,
                                    PROT_READ | PROT_WRITE,
                                    MAP_SHARED, imgu_output_buffers[i].fd.as_handle(), 0);
-        ensure(output_mmap_ptrs[i] != MAP_FAILED, errno);
+        ensure(output_mmap_ptrs[i] != MAP_FAILED, "errno={}", errno);
     }
 
     auto vf_mmap_ptrs = std::array<void*, num_buffers>();
@@ -149,7 +149,7 @@ auto main(const int argc, const char* const argv[]) -> int {
         vf_mmap_ptrs[i] = mmap(NULL, imgu_vf_buffers[i].length,
                                PROT_READ | PROT_WRITE,
                                MAP_SHARED, imgu_vf_buffers[i].fd.as_handle(), 0);
-        ensure(vf_mmap_ptrs[i] != MAP_FAILED, errno);
+        ensure(vf_mmap_ptrs[i] != MAP_FAILED, "errno={}", errno);
     }
 
     auto params_mmap_ptrs = std::array<ipu3_uapi_params*, num_buffers>();
@@ -157,7 +157,7 @@ auto main(const int argc, const char* const argv[]) -> int {
         params_mmap_ptrs[i] = (ipu3_uapi_params*)mmap(NULL, imgu_parameter_buffers[i].length,
                                                       PROT_READ | PROT_WRITE,
                                                       MAP_SHARED, imgu_parameter_buffers[i].fd.as_handle(), 0);
-        ensure(params_mmap_ptrs[i] != MAP_FAILED, errno);
+        ensure(params_mmap_ptrs[i] != MAP_FAILED, "errno={}", errno);
         memset(params_mmap_ptrs[i], 0, imgu_parameter_buffers[i].length);
         init_params_buffer(*params_mmap_ptrs[i], pipeline_config, bds_grid);
     }
@@ -189,7 +189,7 @@ auto main(const int argc, const char* const argv[]) -> int {
             break;
         }
         if(!found) {
-            line_warn("unknown parameter ", key);
+            WARN("unknown parameter: {}", key);
         }
     }
 
@@ -212,11 +212,11 @@ auto main(const int argc, const char* const argv[]) -> int {
         auto       ubuf           = std::vector<std::byte>(output_height / 4 * output_width);
         auto       vbuf           = std::vector<std::byte>(output_height / 4 * output_width);
 
-        print("ipu3 sensor ", cio2_0.sensor.dev_node);
+        std::println("ipu3 sensor {}", cio2_0.sensor.dev_node);
         if(cio2_0.sensor.lens) {
-            print("ipu3 lens ", cio2_0.sensor.lens->dev_node);
+            std::println("ipu3 lens {}", cio2_0.sensor.lens->dev_node);
         }
-        print("ready");
+        std::println("ready");
 
         auto timer = FPSTimer();
 
@@ -253,7 +253,7 @@ auto main(const int argc, const char* const argv[]) -> int {
 
             const auto byte_array = Frame::ByteArray{static_cast<std::byte*>(output_mmap_ptrs[i]), imgu_output_buffers[i].length};
             auto       frame      = YUV420SPFrame(output_width, output_height, output_stride);
-            ensure_v(frame.save_to_jpeg(byte_array, path));
+            ensure_v(frame.save_to_jpeg(byte_array, path.data()));
 
             context.ui_command = Command::TakePhotoDone;
         } break;

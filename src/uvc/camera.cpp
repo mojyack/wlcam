@@ -4,11 +4,11 @@
 #include <poll.h>
 #include <unistd.h>
 
-#include "../macros/unwrap.hpp"
+#include "../macros/coop-unwrap.hpp"
 #include "camera.hpp"
 
 auto Camera::loader_main(const size_t index) -> coop::Async<void> {
-    co_unwrap_v(fmt, v4l2::get_current_format(params.fd));
+    coop_unwrap(fmt, v4l2::get_current_format(params.fd));
     auto& event = loaders[index].event;
 loop:
     co_await event;
@@ -28,16 +28,16 @@ loop:
         frame.reset(new YUV420SPFrame(params.width, params.height, fmt.bytesperline));
         break;
     default:
-        co_bail_v("pixelformat bug");
+        coop_bail("pixelformat bug");
     }
     const auto byte_array = Frame::ByteArray{static_cast<std::byte*>(params.buffers[index].start), params.buffers[index].length};
-    co_ensure_v(co_await coop::run_blocking([&, window = params.window]() {
+    coop_ensure(co_await coop::run_blocking([&, window = params.window]() {
         auto       window_context = window->fork_context();
         const auto ret            = frame->load_texture(byte_array);
         window_context.flush();
         return ret;
     }));
-    co_ensure_v(v4l2::queue_buffer(params.fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, index));
+    coop_ensure(v4l2::queue_buffer(params.fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, index));
 
     if(front_frame_count < frame_count) {
         front_frame_count = frame_count;
@@ -52,7 +52,7 @@ loop:
     case Command::TakePhoto: {
         const auto path = params.file_manager->get_next_path().string() + ".jpg";
 
-        co_ensure_v(co_await coop::run_blocking([&]() { return frame->save_to_jpeg(byte_array, path); }));
+        coop_ensure(co_await coop::run_blocking([&]() { return frame->save_to_jpeg(byte_array, path.data()); }));
 
         params.window_context->ui_command = Command::TakePhotoDone;
     } break;
@@ -86,13 +86,10 @@ auto Camera::dispatcher_main() -> coop::Async<bool> {
     constexpr static auto error_value = false;
 
     // start loaders
-    auto works   = std::vector<coop::Async<void>>(loaders.size());
-    auto handles = std::vector<coop::TaskHandle*>(loaders.size());
+    auto& runner = *co_await coop::reveal_runner();
     for(auto i = 0u; i < loaders.size(); i += 1) {
-        works[i]   = loader_main(i);
-        handles[i] = &loaders[i].task;
+        runner.push_task(loader_main(i), &loaders[i].task);
     }
-    co_await coop::run_vec(std::move(works)).detach(std::move(handles));
 
     // loop
     auto timer = FPSTimer();
@@ -109,7 +106,8 @@ loop:
 
 auto Camera::run(CameraParams params) -> coop::Async<void> {
     this->params = std::move(params);
-    co_await coop::run_args(dispatcher_main()).detach({&dispatcher});
+    auto& runner = *co_await coop::reveal_runner();
+    runner.push_task(dispatcher_main(), &dispatcher);
 }
 
 auto Camera::shutdown() -> void {

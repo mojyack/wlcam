@@ -1,4 +1,5 @@
 #pragma once
+#include <mutex>
 #include <optional>
 #include <span>
 #include <string>
@@ -11,8 +12,8 @@ extern "C" {
 #include <libavutil/pixfmt.h>
 }
 
+#include "../macros/autoptr.hpp"
 #include "common.hpp"
-#include "macros/autoptr.hpp"
 
 namespace ff {
 declare_autoptr(FormatContext, AVFormatContext, avformat_free_context);

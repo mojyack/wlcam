@@ -1,7 +1,7 @@
-#include "encoder/converter.hpp"
-#include "encoder/encoder.hpp"
 #include "macros/assert.hpp"
-#include "pulse/pulse.hpp"
+#include "pulse-recorder/pulse.hpp"
+#include "video-encoder/converter.hpp"
+#include "video-encoder/encoder.hpp"
 
 auto main(const int argc, const char* const* /*argv*/) -> int {
     constexpr auto video       = true;
@@ -42,7 +42,7 @@ auto main(const int argc, const char* const* /*argv*/) -> int {
     }
 
     if(argc >= 2) {
-        print("using vappi");
+        std::println("using vappi");
         params.video->codec.name = "h264_vaapi";
     }
 

@@ -2,10 +2,10 @@
 #include <thread>
 
 #include "args.hpp"
-#include "encoder/converter.hpp"
-#include "encoder/encoder.hpp"
-#include "pulse/pulse.hpp"
+#include "pulse-recorder/pulse.hpp"
 #include "timer.hpp"
+#include "video-encoder/converter.hpp"
+#include "video-encoder/encoder.hpp"
 
 struct RecordContext {
     ff::Encoder        encoder;

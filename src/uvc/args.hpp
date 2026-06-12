@@ -12,6 +12,6 @@ struct Args : CommonArgs {
     FourCC      pixel_format = {v4l2::fourcc("MJPG")};
     bool        list_formats = false;
 
-    static auto parse(int argc, const char* const argv[]) -> std::optional<Args>;
+    static auto parse(int argc, const char* const* argv) -> std::optional<Args>;
 };
 

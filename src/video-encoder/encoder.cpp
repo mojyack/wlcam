@@ -8,8 +8,8 @@ extern "C" {
 #include <libavutil/log.h>
 }
 
+#include "../macros/unwrap.hpp"
 #include "encoder.hpp"
-#include "macros/unwrap.hpp"
 
 namespace ff {
 declare_autoptr(AVBufferSrcParameters, AVBufferSrcParameters, av_free);
@@ -25,10 +25,10 @@ auto Encoder::create_video_filter(const VideoParams& params) -> std::optional<Vi
     auto filter_desc = std::string();
 
     filter_desc += "buffer@source=pixel_aspect=1/1";
-    filter_desc += build_string(":width=", params.width);
-    filter_desc += build_string(":height=", params.height);
-    filter_desc += build_string(":pix_fmt=", params.pix_fmt);
-    filter_desc += build_string(":time_base=", us_rational.num, "/", us_rational.den);
+    filter_desc += std::format(":width={}", params.width);
+    filter_desc += std::format(":height={}", params.height);
+    filter_desc += std::format(":pix_fmt={}", int(params.pix_fmt));
+    filter_desc += std::format(":time_base={}/{}", us_rational.num, us_rational.den);
     if(!params.filter.empty()) {
         filter_desc += ",";
         filter_desc += params.filter;
@@ -40,7 +40,7 @@ auto Encoder::create_video_filter(const VideoParams& params) -> std::optional<Vi
     filter_desc += ",";
     filter_desc += "buffersink@sink";
 
-    print("using video filter: ", filter_desc);
+    std::println("using video filter: {}", filter_desc);
 
     // parse to filter
     auto filter = VideoFilter();
@@ -65,7 +65,7 @@ auto Encoder::create_video_filter(const VideoParams& params) -> std::optional<Vi
     video_codec_context->height              = filter_output->h;
     video_codec_context->pix_fmt             = (AVPixelFormat)filter_output->format;
     video_codec_context->time_base           = filter_output->time_base;
-    video_codec_context->framerate           = filter_output->frame_rate;
+    video_codec_context->framerate           = av_buffersink_get_frame_rate(filter.sink_context);
     video_codec_context->sample_aspect_ratio = filter_output->sample_aspect_ratio;
 
     return filter;
@@ -104,7 +104,7 @@ auto Encoder::init_video_stream(const VideoParams& params) -> bool {
     }
     if(this->params.ffmpeg_debug) {
         auto dump = AutoAVString(avfilter_graph_dump(video_filter.graph.get(), 0));
-        print(dump.get());
+        std::println("{}", dump.get());
     }
 
     if(use_vaapi) {

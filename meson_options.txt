@@ -1,2 +1,3 @@
 option('uvc', type : 'boolean', value : true)
 option('ipu3', type : 'boolean', value : false)
+option('tests', type : 'boolean', value : true)

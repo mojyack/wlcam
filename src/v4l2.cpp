@@ -52,7 +52,7 @@ auto list_intervals(const int fd, const uint32_t pixelformat, const uint32_t wid
             return;
         }
         auto& disc = fmt.discrete;
-        printf("    %u/%u\n", disc.numerator, disc.denominator);
+        std::println("    {}/{}", disc.numerator, disc.denominator);
         i += 1;
         fmt.index        = i;
         fmt.pixel_format = pixelformat;
@@ -73,7 +73,7 @@ auto list_framesizes(const int fd, const uint32_t pixelformat) -> void {
             return;
         }
         auto& disc = fmt.discrete;
-        printf("  %ux%u\n", disc.width, disc.height);
+        std::println("  {}x{}", disc.width, disc.height);
         list_intervals(fd, pixelformat, disc.width, disc.height);
         i += 1;
         fmt              = v4l2_frmsizeenum{};
@@ -91,9 +91,13 @@ auto list_formats(const int fd, const v4l2_buf_type buffer_type, const uint32_t 
     fmt.mbus_code = mbus_code;
 
     while(xioctl(fd, VIDIOC_ENUM_FMT, &fmt) != -1) {
-        printf("%i: %c%c%c%c (%s)\n", fmt.index,
-               fmt.pixelformat >> 0, fmt.pixelformat >> 8,
-               fmt.pixelformat >> 16, fmt.pixelformat >> 24, fmt.description);
+        std::println("{}: {:c}{:c}{:c}{:c} ({})",
+                     fmt.index,
+                     char(fmt.pixelformat >> 0),
+                     char(fmt.pixelformat >> 8),
+                     char(fmt.pixelformat >> 16),
+                     char(fmt.pixelformat >> 24),
+                     fmt.description);
         list_framesizes(fd, fmt.pixelformat);
         i += 1;
         fmt       = v4l2_fmtdesc{};
@@ -106,7 +110,7 @@ auto get_current_format(const int fd) -> std::optional<v4l2_pix_format> {
     auto fmt = v4l2_format{};
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
-    ensure(xioctl(fd, VIDIOC_G_FMT, &fmt) != -1, "get_format failed: ", errno);
+    ensure(xioctl(fd, VIDIOC_G_FMT, &fmt) != -1, "get_format failed: {}", errno);
     return fmt.fmt.pix;
 }
 
@@ -118,7 +122,7 @@ auto set_format(const int fd, const uint32_t pixelformat, const uint32_t width, 
     fmt.fmt.pix.pixelformat = pixelformat;
     fmt.fmt.pix.field       = V4L2_FIELD_ANY;
 
-    ensure(xioctl(fd, VIDIOC_S_FMT, &fmt) != -1, "set_format failed: ", errno);
+    ensure(xioctl(fd, VIDIOC_S_FMT, &fmt) != -1, "set_format failed: {}", errno);
     return fmt.fmt.pix;
 }
 
@@ -138,7 +142,7 @@ auto set_format_mp(const int fd, const v4l2_buf_type buffer_type, const uint32_t
         }
     }
 
-    ensure(xioctl(fd, VIDIOC_S_FMT, &fmt) != -1, "set_format failed: ", errno);
+    ensure(xioctl(fd, VIDIOC_S_FMT, &fmt) != -1, "set_format failed: {}", errno);
     return fmt;
 }
 
@@ -206,7 +210,7 @@ auto query_and_export_buffers(const int fd, const v4l2_buf_type buffer_type, con
 
         buf.type  = buffer_type;
         buf.index = i;
-        ensure(xioctl(fd, VIDIOC_QUERYBUF, &buf) == 0, errno);
+        ensure(xioctl(fd, VIDIOC_QUERYBUF, &buf) == 0, "errno={}", errno);
 
         unwrap(dmabuffd, export_dmabuf(fd, i, 0, buffer_type));
         buffers.emplace_back(DMABuffer{FileDescriptor(dmabuffd), buf.length});
@@ -226,7 +230,7 @@ auto query_and_export_buffers_mp(const int fd, const v4l2_buf_type buffer_type, 
         buf.index    = i;
         buf.length   = planes.size();
         buf.m.planes = planes.data();
-        ensure(xioctl(fd, VIDIOC_QUERYBUF, &buf) == 0, errno);
+        ensure(xioctl(fd, VIDIOC_QUERYBUF, &buf) == 0, "errno={}", errno);
 
         for(auto j = 0u; j < buf.length; j += 1) {
             unwrap(dmabuffd, export_dmabuf(fd, i, j, buffer_type));
