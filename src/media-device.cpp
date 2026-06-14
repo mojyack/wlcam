@@ -96,7 +96,59 @@ auto MediaDevice::find_pad_owner_and_index(const uint32_t pad_id) const -> std::
     return {nullptr, 0};
 }
 
-auto MediaDevice::configure_link(Link& link, const bool enable) -> bool {
+auto MediaDevice::find_links(const Entity* const src, const Entity* const sink) const -> std::vector<LinkInfo> {
+    auto ret = std::vector<LinkInfo>();
+    if(src != nullptr) {
+        for(auto p = uint32_t(0); p < src->pads.size(); p += 1) {
+            const auto& pad = src->pads[p];
+            if(!(pad.flags & MEDIA_PAD_FL_SOURCE)) {
+                continue;
+            }
+            for(auto l = uint32_t(0); l < pad.links.size(); l += 1) {
+                const auto& link         = pad.links[l];
+                const auto [peer, index] = find_pad_owner_and_index(link.sink_pad_id);
+                if(sink == nullptr || peer == sink) {
+                    ret.emplace_back(LinkInfo{
+                        .src_entity   = src,
+                        .sink_entity  = peer,
+                        .src_pad_num  = p,
+                        .sink_pad_num = uint32_t(index),
+                        .link         = &link,
+                    });
+                }
+            }
+        }
+    } else if(sink != nullptr) {
+        for(auto p = uint32_t(0); p < sink->pads.size(); p += 1) {
+            const auto& pad = sink->pads[p];
+            if(!(pad.flags & MEDIA_PAD_FL_SINK)) {
+                continue;
+            }
+            for(auto l = uint32_t(0); l < pad.links.size(); l += 1) {
+                const auto& link         = pad.links[l];
+                const auto [peer, index] = find_pad_owner_and_index(link.src_pad_id);
+                if(src == nullptr || peer == src) {
+                    ret.emplace_back(LinkInfo{
+                        .src_entity   = peer,
+                        .sink_entity  = sink,
+                        .src_pad_num  = uint32_t(index),
+                        .sink_pad_num = p,
+                        .link         = &link,
+                    });
+                }
+            }
+        }
+    }
+    return ret;
+}
+
+auto MediaDevice::find_link(const Entity* const src, const Entity* const sink) const -> std::optional<LinkInfo> {
+    auto links = find_links(src, sink);
+    ensure(links.size() == 1);
+    return links[0];
+}
+
+auto MediaDevice::configure_link(const Link& link, const bool enable) -> bool {
     auto desc               = media_link_desc();
     auto [src, src_index]   = find_pad_owner_and_index(link.src_pad_id);
     auto [sink, sink_index] = find_pad_owner_and_index(link.sink_pad_id);
@@ -104,8 +156,20 @@ auto MediaDevice::configure_link(Link& link, const bool enable) -> bool {
     desc.sink               = {sink->id, uint16_t(sink_index), MEDIA_PAD_FL_SINK, {}};
     desc.flags              = (link.flags & ~MEDIA_LNK_FL_ENABLED) | (enable ? MEDIA_LNK_FL_ENABLED : 0);
     ensure(ioctl(fd.as_handle(), MEDIA_IOC_SETUP_LINK, &desc) == 0);
+    return true;
+}
 
-    link.flags = desc.flags;
+auto MediaDevice::configure_link(const LinkInfo& info, const bool enable) -> bool {
+    // immutable link is treated as success
+    if(info.link->flags & MEDIA_LNK_FL_IMMUTABLE) {
+        return true;
+    }
+
+    auto desc   = media_link_desc();
+    desc.source = {info.src_entity->id, uint16_t(info.src_pad_num), MEDIA_PAD_FL_SOURCE, {}};
+    desc.sink   = {info.sink_entity->id, uint16_t(info.sink_pad_num), MEDIA_PAD_FL_SINK, {}};
+    desc.flags  = (info.link->flags & ~MEDIA_LNK_FL_ENABLED) | (enable ? MEDIA_LNK_FL_ENABLED : 0);
+    ensure(ioctl(fd.as_handle(), MEDIA_IOC_SETUP_LINK, &desc) == 0);
     return true;
 }
 
@@ -123,6 +187,39 @@ auto MediaDevice::disable_all_links() -> bool {
                 ensure(configure_link(l, false));
             }
         }
+    }
+    return true;
+}
+
+auto MediaDevice::enable_exclusive_link(const LinkInfo& info) -> bool {
+    ensure(disable_all_links(*info.src_entity, info.src_pad_num));
+    ensure(disable_all_links(*info.sink_entity, info.sink_pad_num));
+    ensure(configure_link(info, true));
+    return true;
+}
+
+auto MediaDevice::disable_all_links(const Entity& entity, const uint32_t pad_num) -> bool {
+    const auto& pad = entity.pads[pad_num];
+    for(auto& link : pad.links) {
+        const auto is_src = link.src_pad_id == pad.id;
+
+        const auto [peer_entity, peer_pad_num] = find_pad_owner_and_index(is_src ? link.sink_pad_id : link.src_pad_id);
+
+        const auto info = is_src ? LinkInfo{
+                                       .src_entity   = &entity,
+                                       .sink_entity  = peer_entity,
+                                       .src_pad_num  = pad_num,
+                                       .sink_pad_num = uint32_t(peer_pad_num),
+                                       .link         = &link,
+                                   }
+                                 : LinkInfo{
+                                       .src_entity   = peer_entity,
+                                       .sink_entity  = &entity,
+                                       .src_pad_num  = uint32_t(peer_pad_num),
+                                       .sink_pad_num = pad_num,
+                                       .link         = &link,
+                                   };
+        ensure(configure_link(info, false));
     }
     return true;
 }

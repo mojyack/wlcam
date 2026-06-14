@@ -147,17 +147,22 @@ auto set_format_mp(const int fd, const v4l2_buf_type buffer_type, const uint32_t
     return fmt;
 }
 
-auto set_format_subdev(const int fd, const uint32_t pad_index, const uint32_t mbus_code, const uint32_t width, const uint32_t height) -> bool {
+auto set_format_subdev(const int fd, const uint32_t pad_index, const SubdevFormat& format) -> std::optional<SubdevFormat> {
     auto fmt = v4l2_subdev_format();
 
     fmt.which         = V4L2_SUBDEV_FORMAT_ACTIVE;
     fmt.pad           = pad_index;
-    fmt.format.width  = width;
-    fmt.format.height = height;
-    fmt.format.code   = mbus_code;
+    fmt.format.width  = format.width;
+    fmt.format.height = format.height;
+    fmt.format.code   = format.code;
     fmt.format.field  = V4L2_FIELD_NONE;
 
-    return xioctl(fd, VIDIOC_SUBDEV_S_FMT, &fmt) == 0;
+    ensure(xioctl(fd, VIDIOC_SUBDEV_S_FMT, &fmt) == 0);
+    return SubdevFormat{
+        .code   = fmt.format.code,
+        .width  = fmt.format.width,
+        .height = fmt.format.height,
+    };
 }
 
 auto set_interval(const int fd, const uint32_t numerator, const uint32_t denominator) -> bool {

@@ -29,4 +29,5 @@ struct EncodeResult {
 auto calc_jpeg_size(const std::byte* ptr) -> size_t;
 auto decode_jpeg_to_yuvp(const std::byte* const ptr, size_t len, size_t downscale_factor) -> std::optional<DecodeResult>;
 auto encode_yuvp_to_jpeg(int width, int height, int stride, int ppc_x, int ppc_y, const std::byte* y, const std::byte* u, const std::byte* v) -> std::optional<EncodeResult>;
+auto encode_rgba_to_jpeg(int width, int height, int stride, const std::byte* rgba, int quality = 90, bool bottom_up = false) -> std::optional<EncodeResult>;
 } // namespace jpg

@@ -11,26 +11,28 @@ auto main(const int argc, const char* const* /*argv*/) -> int {
     constexpr auto duration    = 5;
     constexpr auto sample_rate = 48000;
 
+    auto vparams = ff::VideoParamsInternal{
+        .codec = {
+            .name    = argc >= 2 ? "h264_vaapi" : "libx264",
+            .options = {},
+        },
+        .pix_fmt = AV_PIX_FMT_NV12,
+        .width   = width,
+        .height  = height,
+    };
+    auto aparams = ff::AudioParamsInternal{
+        .codec = {
+            .name    = "aac",
+            .options = {},
+        },
+        .sample_fmt     = AV_SAMPLE_FMT_FLTP,
+        .sample_rate    = sample_rate,
+        .channel_layout = AV_CHANNEL_LAYOUT_STEREO,
+    };
     auto params = ff::EncoderParams{
-        .output = "/tmp/output.mkv",
-        .video  = ff::VideoParams{
-             .codec = {
-                 .name    = "libx264",
-                 .options = {},
-            },
-             .pix_fmt = AV_PIX_FMT_NV12,
-             .width   = width,
-             .height  = height,
-        },
-        .audio = ff::AudioParams{
-            .codec = {
-                .name    = "aac",
-                .options = {},
-            },
-            .sample_fmt     = AV_SAMPLE_FMT_FLTP,
-            .sample_rate    = sample_rate,
-            .channel_layout = AV_CHANNEL_LAYOUT_STEREO,
-        },
+        .output       = "/tmp/output.mkv",
+        .video        = ff::VideoParams::create<ff::VideoParamsInternal>(vparams),
+        .audio        = ff::AudioParams::create<ff::AudioParamsInternal>(aparams),
         .ffmpeg_debug = true,
     };
 
@@ -39,11 +41,6 @@ auto main(const int argc, const char* const* /*argv*/) -> int {
     }
     if(!audio) {
         params.audio = std::nullopt;
-    }
-
-    if(argc >= 2) {
-        std::println("using vappi");
-        params.video->codec.name = "h264_vaapi";
     }
 
     auto encoder = ff::Encoder();

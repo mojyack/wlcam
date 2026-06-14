@@ -5,7 +5,10 @@ project(
     default_options: ['warning_level=3', 'werror=false', 'cpp_std=c++23'],
 )
 
+add_project_arguments('-Wno-missing-field-initializers', language: 'cpp')
+
 graphics_files = files(
+    'src/graphics/bayer.cpp',
     'src/graphics/multitex.cpp',
     'src/graphics/planar.cpp',
     'src/graphics/yuv420sp.cpp',
@@ -13,10 +16,11 @@ graphics_files = files(
 )
 
 subdir('src/video-encoder')
+subdir('src/v4l2-encoder')
 subdir('src/pulse-recorder')
 subdir('src/gawl')
 
-gawl_files = gawl_core_files + gawl_graphic_files + gawl_textrender_files + gawl_fc_files + gawl_no_touch_callbacks_file
+gawl_files = gawl_core_files + gawl_graphic_files + gawl_textrender_files + gawl_fc_files + gawl_no_touch_callbacks_file + gawl_empty_texture_files
 gawl_deps = gawl_core_deps + gawl_graphic_deps + gawl_textrender_deps + gawl_fc_deps
 
 tj_dep = dependency('libturbojpeg')
@@ -27,6 +31,10 @@ endif
 
 if get_option('ipu3')
     subdir('src/ipu3')
+endif
+
+if get_option('camss')
+    subdir('src/camss')
 endif
 
 if get_option('tests')

@@ -1,10 +1,13 @@
 #pragma once
+#include <memory>
+
 #include "ui.hpp"
 #include "v4l2.hpp"
 
 struct V4L2ControlBundle {
     int                        fd;
     std::vector<v4l2::Control> ctrls;
+    std::function<void()>      fixup;
 };
 
 struct V4L2Element {
@@ -46,3 +49,5 @@ struct V4L2Button : V4L2Element, Button {
     auto on_pressed() -> void override;
     auto is_active() -> bool override;
 };
+
+auto build_buttons_from_controls(V4L2ControlBundle& bundle, std::vector<std::unique_ptr<Button>>& buttons) -> void;

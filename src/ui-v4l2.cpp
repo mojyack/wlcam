@@ -7,6 +7,9 @@ auto refresh_ctrls(V4L2ControlBundle& bundle) -> bool {
         unwrap_mut(c, v4l2::query_control(bundle.fd, ctrl.id));
         ctrl = std::move(c);
     }
+    if(bundle.fixup) {
+        bundle.fixup();
+    }
     return true;
 }
 } // namespace
@@ -96,4 +99,32 @@ auto V4L2Button::on_pressed() -> void {
 
 auto V4L2Button::is_active() -> bool {
     return !ctrl->inactive && !ctrl->ro;
+}
+
+auto build_buttons_from_controls(V4L2ControlBundle& bundle, std::vector<std::unique_ptr<Button>>& buttons) -> void {
+    for(auto& ctrl : bundle.ctrls) {
+        auto element = (V4L2Element*)(nullptr);
+        auto button  = (Button*)(nullptr);
+        switch(ctrl.type) {
+        case v4l2::ControlType::Int: {
+            const auto btn = new V4L2SliderButton();
+            element        = &btn->slider;
+            button         = btn;
+        } break;
+        case v4l2::ControlType::Bool: {
+            const auto btn = new V4L2Button();
+            element        = btn;
+            button         = btn;
+            btn->pressed   = ctrl.current;
+        } break;
+        case v4l2::ControlType::Menu: {
+            const auto btn = new V4L2MenuButton();
+            element        = &btn->menu;
+            button         = btn;
+        } break;
+        }
+        element->bundle = &bundle;
+        element->ctrl   = &ctrl;
+        buttons.emplace_back(button);
+    }
 }

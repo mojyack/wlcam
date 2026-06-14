@@ -1,7 +1,12 @@
 #pragma once
+#include <optional>
 #include <span>
 
+#include <GL/gl.h>
+
+#include "gawl/empty-texture.hpp"
 #include "gawl/screen.hpp"
+#include "graphics/bayer.hpp"
 #include "graphics/planar.hpp"
 #include "graphics/yuv420sp.hpp"
 #include "graphics/yuv422i.hpp"
@@ -66,4 +71,28 @@ class YUV420SPFrame : public Frame {
     auto get_planes(ByteArray buf) const -> std::optional<std::vector<ff::Plane>> override;
 
     YUV420SPFrame(int width, int height, int stride);
+};
+
+class BayerFrame : public Frame {
+  private:
+    int          width;
+    int          height;
+    int          stride;
+    BayerGraphic graphic;
+
+    // debayed rgba
+    std::optional<gawl::EmptyTexture> fbo;
+
+    auto ensure_rgba() -> void;
+
+  public:
+    auto save_to_jpeg(ByteArray buf, const char* path) -> bool override;
+    auto load_texture(ByteArray buf) -> bool override;
+    auto draw_fit_rect(gawl::Screen& screen, const gawl::Rectangle& rect) -> void override;
+    auto get_pixel_format() const -> std::optional<AVPixelFormat> override;
+    auto get_planes(ByteArray buf) const -> std::optional<std::vector<ff::Plane>> override;
+
+    auto get_rgba_texture() const -> std::optional<GLuint>;
+
+    BayerFrame(int width, int height, int stride);
 };

@@ -115,4 +115,18 @@ auto encode_yuvp_to_jpeg(const int width, const int height, const int stride, co
                                    &buf, &size, 100, 0) == 0);
     return EncodeResult{Buffer((std::byte*)buf), size};
 }
+
+auto encode_rgba_to_jpeg(const int width, const int height, const int stride, const std::byte* const rgba, const int quality, const bool bottom_up) -> std::optional<EncodeResult> {
+    auto tj = AutoTJHandle(tjInitCompress());
+    ensure(tj.get() != NULL);
+
+    auto buf  = (unsigned char*)(nullptr);
+    auto size = size_t(0);
+    ensure(tjCompress2(tj.get(),
+                       (const unsigned char*)rgba,
+                       width, stride, height,
+                       TJPF_RGBA,
+                       &buf, &size, TJSAMP_420, quality, bottom_up ? TJFLAG_BOTTOMUP : 0) == 0);
+    return EncodeResult{Buffer((std::byte*)buf), size};
+}
 } // namespace jpg

@@ -71,8 +71,13 @@ auto main(const int argc, const char* const argv[]) -> int {
     const auto cio2_fd        = cio2_0.cio2.as_handle();
     const auto cio2_sensor_fd = cio2_0.sensor.fd.as_handle();
     const auto cio2_output_fd = cio2_0.output.as_handle();
-    ensure(v4l2::set_format_subdev(cio2_sensor_fd, cio2_0.sensor.pad_index, args.sensor_mbus_code, args.sensor_width, args.sensor_height));
-    ensure(v4l2::set_format_subdev(cio2_fd, 0, args.sensor_mbus_code, args.sensor_width, args.sensor_height));
+    const auto cio2_format    = v4l2::SubdevFormat{
+           .code   = uint32_t(args.sensor_mbus_code),
+           .width  = uint32_t(args.sensor_width),
+           .height = uint32_t(args.sensor_height),
+    };
+    ensure(v4l2::set_format_subdev(cio2_sensor_fd, cio2_0.sensor.pad_index, cio2_format));
+    ensure(v4l2::set_format_subdev(cio2_fd, 0, cio2_format));
     unwrap(cio_output_fmt, v4l2::set_format_mp(cio2_output_fd, capbuf_mp, imgu_input_format, 1, args.sensor_width, args.sensor_height, nullptr));
 
     const auto output     = algo::align_size({int(args.width), int(args.height)});
@@ -87,13 +92,19 @@ auto main(const int argc, const char* const argv[]) -> int {
     const auto imgu_param_fd  = imgu_0.parameters.as_handle();
     const auto imgu_stat_fd   = imgu_0.stat.as_handle();
     const auto plane_fmts     = cio_output_fmt.fmt.pix_mp.plane_fmt;
+
+    const auto imgu_subdev_format = v4l2::SubdevFormat{
+        .code   = MEDIA_BUS_FMT_FIXED,
+        .width  = uint32_t(output.width),
+        .height = uint32_t(output.height),
+    };
     ensure(v4l2::set_format_mp(imgu_input_fd, outbuf_mp, imgu_input_format, 1, args.sensor_width, args.sensor_height, plane_fmts));
-    ensure(v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_input_pad_index, MEDIA_BUS_FMT_FIXED, pipeline_config.gdc.width, pipeline_config.gdc.height));
-    ensure(v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_parameters_pad_index, MEDIA_BUS_FMT_FIXED, output.width, output.height));
-    ensure(v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_stat_pad_index, MEDIA_BUS_FMT_FIXED, output.width, output.height));
-    ensure(v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_output_pad_index, MEDIA_BUS_FMT_FIXED, output.width, output.height));
+    ensure(v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_input_pad_index, {MEDIA_BUS_FMT_FIXED, uint32_t(pipeline_config.gdc.width), uint32_t(pipeline_config.gdc.height)}));
+    ensure(v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_parameters_pad_index, imgu_subdev_format));
+    ensure(v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_stat_pad_index, imgu_subdev_format));
+    ensure(v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_output_pad_index, imgu_subdev_format));
     unwrap(imgu_output_fmt, v4l2::set_format_mp(imgu_output_fd, capbuf_mp, V4L2_PIX_FMT_NV12, 2, output.width, output.height, nullptr));
-    ensure(v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_viewfinder_pad_index, MEDIA_BUS_FMT_FIXED, output.width, output.height));
+    ensure(v4l2::set_format_subdev(imgu_fd, imgu_0.imgu_viewfinder_pad_index, imgu_subdev_format));
     unwrap(imgu_vf_fmt, v4l2::set_format_mp(imgu_vf_fd, capbuf_mp, V4L2_PIX_FMT_NV12, 2, output.width, output.height, nullptr));
 
     const auto& iif = pipeline_config.iif;
@@ -236,7 +247,7 @@ auto main(const int argc, const char* const argv[]) -> int {
 
             unwrap_v(pix_fmt, frame->get_pixel_format());
             auto rc = std::unique_ptr<RecordContext>(new RecordContext());
-            ensure_v(rc->init(path, pix_fmt, args));
+            ensure_v(rc->init(path, pix_fmt, output_width, output_height, args));
             record_context.reset(rc.release());
 
             context.ui_command = Command::StartRecordingDone;
@@ -253,6 +264,7 @@ auto main(const int argc, const char* const argv[]) -> int {
         if(record_context) {
             unwrap_v(planes, frame->get_planes(byte_array));
             record_context->encoder.add_frame(planes, record_context->timer.elapsed<std::chrono::microseconds>());
+            record_context->ensure_recording();
         }
 
         // update displayed image

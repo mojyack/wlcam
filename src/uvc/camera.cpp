@@ -71,7 +71,7 @@ loop:
 
         co_unwrap_v(pix_fmt, frame->get_pixel_format());
         record_context.reset(new RecordContext());
-        co_ensure_v(record_context->init(path, pix_fmt, *params.args));
+        co_ensure_v(record_context->init(path, pix_fmt, params.width, params.height, *params.args));
 
         params.window_context->ui_command = Command::StartRecordingDone;
     } break;
@@ -88,6 +88,7 @@ loop:
         co_unwrap_v(planes, frame->get_planes(byte_array));
         co_await loader.thread.run([&]() {
             rc->encoder.add_frame(planes, rc->timer.elapsed<std::chrono::microseconds>());
+            rc->ensure_recording();
         });
     }
 

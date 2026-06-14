@@ -35,6 +35,12 @@ struct DMABuffer {
     size_t         length;
 };
 
+struct SubdevFormat {
+    uint32_t code;
+    uint32_t width;
+    uint32_t height;
+};
+
 auto is_capture_device(int fd) -> std::optional<bool>;
 auto list_intervals(int fd, uint32_t pixelformat, uint32_t width, uint32_t height) -> void;
 auto list_framesizes(int fd, uint32_t pixelformat) -> void;
@@ -43,7 +49,7 @@ auto list_formats(int fd, v4l2_buf_type buffer_type, uint32_t mbus_code) -> void
 auto get_current_format(int fd) -> std::optional<v4l2_pix_format>;
 auto set_format(int fd, uint32_t pixelformat, uint32_t width, uint32_t height) -> std::optional<v4l2_pix_format>;
 auto set_format_mp(int fd, v4l2_buf_type buffer_type, uint32_t pixelformat, uint32_t planes_count, uint32_t width, uint32_t height, const v4l2_plane_pix_format* plane_fmts) -> std::optional<v4l2_format>;
-auto set_format_subdev(int fd, uint32_t pad_index, uint32_t mbus_code, uint32_t width, uint32_t height) -> bool;
+auto set_format_subdev(int fd, uint32_t pad_index, const SubdevFormat& format) -> std::optional<SubdevFormat>;
 auto set_interval(int fd, uint32_t numerator, uint32_t denominator) -> bool;
 auto request_buffers(int fd, v4l2_buf_type buffer_type, v4l2_memory memory_type, uint32_t count) -> std::optional<v4l2_requestbuffers>;
 auto map_buffers(int fd, v4l2_buf_type type, const v4l2_requestbuffers& req) -> std::optional<std::vector<Buffer>>;

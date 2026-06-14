@@ -80,31 +80,7 @@ auto main(const int argc, const char* const* const argv) -> int {
         .fd    = fd,
         .ctrls = v4l2::query_controls(fd),
     };
-    for(auto& ctrl : bundle.ctrls) {
-        auto element = (V4L2Element*)(nullptr);
-        auto button  = (Button*)(nullptr);
-        switch(ctrl.type) {
-        case v4l2::ControlType::Int: {
-            const auto btn = new V4L2SliderButton();
-            element        = &btn->slider;
-            button         = btn;
-        } break;
-        case v4l2::ControlType::Bool: {
-            const auto btn = new V4L2Button();
-            element        = btn;
-            button         = btn;
-            btn->pressed   = ctrl.current;
-        } break;
-        case v4l2::ControlType::Menu: {
-            const auto btn = new V4L2MenuButton();
-            element        = &btn->menu;
-            button         = btn;
-        } break;
-        }
-        element->bundle = &bundle;
-        element->ctrl   = &ctrl;
-        cbs->buttons.emplace_back(button);
-    }
+    build_buttons_from_controls(bundle, cbs->buttons);
 
     auto runner = coop::Runner();
     runner.push_task(app.run());

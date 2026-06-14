@@ -214,7 +214,6 @@ auto WindowCallbacks::refresh() -> void {
 
     // render
     gawl::clear_screen(colors::bg);
-    gawl::mask_alpha();
 
     const auto& rule = *rules[layout];
 
@@ -223,6 +222,7 @@ auto WindowCallbacks::refresh() -> void {
     if(frame) {
         frame->draw_fit_rect(*window, preview_rect);
     }
+    gawl::mask_alpha();
 
     // shot animation
     if(shutter_anim > 0) {

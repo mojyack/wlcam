@@ -55,11 +55,11 @@ auto ImgUDevice::init(MediaDevice& media, const std::string_view entity_name) ->
             }
         }
     }
-    ensure(imgu_input_pad_index != UINT_MAX);
-    ensure(imgu_output_pad_index != UINT_MAX);
-    ensure(imgu_parameters_pad_index != UINT_MAX);
-    ensure(imgu_viewfinder_pad_index != UINT_MAX);
-    ensure(imgu_stat_pad_index != UINT_MAX);
+    ensure(imgu_input_pad_index != uint32_t(-1));
+    ensure(imgu_output_pad_index != uint32_t(-1));
+    ensure(imgu_parameters_pad_index != uint32_t(-1));
+    ensure(imgu_viewfinder_pad_index != uint32_t(-1));
+    ensure(imgu_stat_pad_index != uint32_t(-1));
 
     // enable imgu <- input
     ensure(media.configure_link(imgu.pads[imgu_input_pad_index].links[0], true));

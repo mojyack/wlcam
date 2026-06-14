@@ -8,12 +8,12 @@ class Timer {
 
   public:
     auto reset() -> void {
-        time = std::chrono::high_resolution_clock::now();
+        time = std::chrono::system_clock::now();
     }
 
     template <class T>
     auto elapsed() -> auto {
-        const auto now = std::chrono::high_resolution_clock::now();
+        const auto now = std::chrono::system_clock::now();
         return std::chrono::duration_cast<T>(now - time).count();
     }
 

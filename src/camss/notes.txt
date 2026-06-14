@@ -1,0 +1,7 @@
+OnePlus 6 has:
+- sensor x 3
+- csiphy x 4 (tied to each sensors, one unused)
+- csid x 3 (read from any csiphy)
+- vfe x 4
+    - rdi x 3 (read from any csid, write to /dev/videoN)
+    - pix x 1 (read from any csid, write to /dev/videoN)

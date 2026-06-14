@@ -1,5 +1,8 @@
-#include <fstream>
+#define GL_GLEXT_PROTOTYPES
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
 
+#include "gawl/misc.hpp"
 #include "graphics-wrapper.hpp"
 #include "macros/unwrap.hpp"
 #include "util/file-io.hpp"
@@ -8,9 +11,12 @@
 namespace {
 auto save_yuvp_frame(const char* const path, const int width, const int height, const int stride, const int ppc_x, const int ppc_y, const std::byte* const y, const std::byte* const u, const std::byte* const v) -> bool {
     unwrap(jpeg, jpg::encode_yuvp_to_jpeg(width, height, stride, ppc_x, ppc_y, y, u, v));
-    auto file = std::ofstream(path, std::ios::out | std::ios::binary);
-    file.write((const char*)jpeg.buffer.get(), jpeg.size);
+    ensure(write_file(path, {jpeg.buffer.get(), jpeg.size}));
     return true;
+}
+
+auto rotated_out(const int w, const int h) -> std::pair<int, int> {
+    return (bayer_params.rotate % 2) != 0 ? std::pair{h, w} : std::pair{w, h};
 }
 } // namespace
 
@@ -117,6 +123,69 @@ auto YUV420SPFrame::get_planes(ByteArray buf) const -> std::optional<std::vector
 }
 
 YUV420SPFrame::YUV420SPFrame(const int width, const int height, const int stride)
+    : width(width),
+      height(height),
+      stride(stride) {
+}
+
+// BayerFrame
+auto BayerFrame::ensure_rgba() -> void {
+    if(fbo.has_value()) {
+        return;
+    }
+    const auto [ow, oh] = rotated_out(width, height);
+    fbo.emplace(ow, oh);
+    graphic.draw_rect(*fbo, gawl::Rectangle{{0, 0}, {double(ow), double(oh)}});
+}
+
+auto BayerFrame::save_to_jpeg(ByteArray /*buf*/, const char* const path) -> bool {
+    ensure_rgba();
+
+    // download pixels
+    const auto [ow, oh] = rotated_out(width, height);
+    const auto row      = ow * 4uz;
+    auto       rgba     = std::vector<std::byte>(row * oh);
+
+    const auto binder = fbo->prepare();
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, 0, ow, oh, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+
+    // write to file
+    unwrap(jpeg, jpg::encode_rgba_to_jpeg(ow, oh, ow * 4, rgba.data(), 90, true));
+    ensure(write_file(path, ByteArray(jpeg.buffer.get(), jpeg.size)));
+    return true;
+}
+
+auto BayerFrame::get_rgba_texture() const -> std::optional<GLuint> {
+    ((BayerFrame*)this)->ensure_rgba();
+    return fbo->get_texture();
+}
+
+auto BayerFrame::load_texture(ByteArray buf) -> bool {
+    fbo.reset();
+    graphic.update_texture(width, height, stride, buf.data());
+    return true;
+}
+
+auto BayerFrame::draw_fit_rect(gawl::Screen& screen, const gawl::Rectangle& rect) -> void {
+    const auto [ow, oh] = rotated_out(width, height);
+    if(fbo.has_value()) {
+        // no need to debay again
+        fbo->draw_rect(screen, gawl::calc_fit_rect(rect, ow, oh));
+    } else {
+        graphic.draw_rect(screen, gawl::calc_fit_rect(rect, ow, oh));
+    }
+}
+
+auto BayerFrame::get_pixel_format() const -> std::optional<AVPixelFormat> {
+    return AV_PIX_FMT_NV12;
+}
+
+auto BayerFrame::get_planes(ByteArray /*buf*/) const -> std::optional<std::vector<ff::Plane>> {
+    return std::nullopt;
+}
+
+BayerFrame::BayerFrame(const int width, const int height, const int stride)
     : width(width),
       height(height),
       stride(stride) {
