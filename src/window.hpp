@@ -17,9 +17,9 @@ enum class Command {
 
 struct WindowContext {
     std::shared_ptr<Frame> frame;
-    std::string            error_message;
     Command                ui_command;     // camera -> ui
     Command                camera_command; // ui -> camera
+    int                    capture_rate = 0;
 };
 
 class WindowCallbacks : public gawl::WindowNoTouchCallbacks {
@@ -29,6 +29,8 @@ class WindowCallbacks : public gawl::WindowNoTouchCallbacks {
     gawl::Point                          cursor;
     std::vector<std::unique_ptr<Button>> buttons;
     Timer                                record_timer;
+    FPSCounter                           render_counter;
+    int                                  render_rate  = 0;
     int                                  shutter_anim = 0;
     bool                                 movie        = false;
     bool                                 recording    = false;

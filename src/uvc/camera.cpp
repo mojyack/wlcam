@@ -104,14 +104,16 @@ auto Camera::dispatcher_main() -> coop::Async<bool> {
     }
 
     // loop
-    auto timer = FPSTimer();
+    auto counter = FPSCounter();
 loop:
     const auto res = co_await coop::wait_for_file(params.fd, true, false);
     co_ensure_v(res.read && !res.error);
     co_unwrap_v(index, v4l2::dequeue_buffer(params.fd, V4L2_BUF_TYPE_VIDEO_CAPTURE));
     loaders[index].event.notify();
 
-    timer.tick();
+    if(const auto c = counter.tick(); c >= 0) {
+        params.window_context->capture_rate = c;
+    }
 
     goto loop;
 }

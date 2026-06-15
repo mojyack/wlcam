@@ -226,6 +226,11 @@ auto WindowCallbacks::refresh() -> void {
         break;
     }
 
+    // tick render count
+    if(const auto c = render_counter.tick(); c >= 0) {
+        render_rate = c;
+    }
+
     // render
     gawl::clear_screen(colors::bg);
     gawl::mask_alpha();
@@ -249,9 +254,12 @@ auto WindowCallbacks::refresh() -> void {
         const auto ms  = record_timer.elapsed<std::chrono::milliseconds>();
         const auto sec = ms / 1000;
         const auto min = sec / 60;
-        auto       str = std::format("{:02d}:{:02d}.{:03d}", min, sec % 60, ms % 1000);
+        const auto str = std::format("{:02d}:{:02d}.{:03d}", min, sec % 60, ms % 1000);
         font.draw_fit_rect(*window, preview_rect, colors::palette_white, str, {.align_x = gawl::Align::Right, .align_y = gawl::Align::Right});
     }
+
+    // fps
+    font.draw_fit_rect(*window, preview_rect, colors::palette_white, std::format("{}/{}", render_rate, context.capture_rate), {.align_x = gawl::Align::Right, .align_y = gawl::Align::Left});
 
     // ui elements
     auto base = rule.buttons_origin(window->window_size);

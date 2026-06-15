@@ -193,7 +193,7 @@ auto main(const int argc, const char* const argv[]) -> int {
         }
         std::println("ready");
 
-        auto timer = FPSTimer();
+        auto counter = FPSCounter();
 
     loop:
         if(!running) {
@@ -263,7 +263,9 @@ auto main(const int argc, const char* const argv[]) -> int {
         // release buffer to system
         ensure_v(v4l2::queue_buffer_mp(cio2_output_fd, capbuf_mp, V4L2_MEMORY_DMABUF, i, &cio2_output_buffers[i], 1));
 
-        timer.tick();
+        if(const auto c = counter.tick(); c >= 0) {
+            context.capture_rate = c;
+        }
 
         goto loop;
     });

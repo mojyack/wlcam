@@ -1,6 +1,5 @@
 #pragma once
 #include <chrono>
-#include <print>
 
 class Timer {
   private:
@@ -22,19 +21,19 @@ class Timer {
     }
 };
 
-class FPSTimer {
+class FPSCounter {
   private:
     Timer timer;
     int   count = 0;
 
   public:
-    auto tick() -> void {
+    auto tick() -> int {
         count += 1;
         if(timer.elapsed<std::chrono::milliseconds>() < 1000) {
-            return;
+            return -1;
+        } else {
+            timer.reset();
+            return std::exchange(count, 0);
         }
-        std::println("fps: {}", count);
-        timer.reset();
-        count = 0;
     }
 };
