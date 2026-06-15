@@ -2,7 +2,7 @@
 
 namespace {
 auto yuv422i_fragment_shader_source = R"glsl(
-    #version 330 core
+    #version 130
     in vec2           tex_coordinate;
     uniform sampler2D tex_0;
     out vec4          color;
