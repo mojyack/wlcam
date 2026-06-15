@@ -1,6 +1,5 @@
 #include <coop/io.hpp>
 #include <coop/parallel.hpp>
-#include <coop/thread.hpp>
 #include <poll.h>
 #include <unistd.h>
 
@@ -9,9 +8,14 @@
 
 auto Camera::loader_main(const size_t index) -> coop::Async<void> {
     coop_unwrap(fmt, v4l2::get_current_format(params.fd));
-    auto& event = loaders[index].event;
+    auto& loader = loaders[index];
+
+    co_await loader.thread.run([&loader, window = params.window] {
+        loader.context = window->fork_context();
+    });
+
 loop:
-    co_await event;
+    co_await loader.event;
 
     const auto frame_count = (current_frame_count += 1);
 
@@ -32,10 +36,9 @@ loop:
     }
     const auto byte_array = Frame::ByteArray{static_cast<std::byte*>(params.buffers[index].start), params.buffers[index].length};
 
-    const auto ret = co_await coop::run_blocking([&, window = params.window]() {
-        auto       window_context = window->fork_context();
-        const auto ret            = frame->load_texture(byte_array);
-        window_context.flush();
+    const auto ret = co_await loader.thread.run([&]() {
+        const auto ret = frame->load_texture(byte_array);
+        loader.context.flush();
         return ret;
     });
     coop_ensure(v4l2::queue_buffer(params.fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, index));
@@ -57,7 +60,9 @@ loop:
     case Command::TakePhoto: {
         const auto path = params.file_manager->get_next_path().string() + ".jpg";
 
-        coop_ensure(co_await coop::run_blocking([&]() { return frame->save_to_jpeg(byte_array, path.data()); }));
+        coop_ensure(co_await loader.thread.run([&]() {
+            return frame->save_to_jpeg(byte_array, path.data());
+        }));
 
         params.window_context->ui_command = Command::TakePhotoDone;
     } break;
@@ -81,7 +86,9 @@ loop:
 
     if(const auto rc = record_context) {
         co_unwrap_v(planes, frame->get_planes(byte_array));
-        co_await coop::run_blocking([&]() { rc->encoder.add_frame(planes, rc->timer.elapsed<std::chrono::microseconds>()); });
+        co_await loader.thread.run([&]() {
+            rc->encoder.add_frame(planes, rc->timer.elapsed<std::chrono::microseconds>());
+        });
     }
 
     goto loop;

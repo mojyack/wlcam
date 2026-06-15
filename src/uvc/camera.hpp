@@ -2,8 +2,10 @@
 #include <coop/generator.hpp>
 #include <coop/promise.hpp>
 #include <coop/single-event.hpp>
+#include <coop/thread.hpp>
 
 #include "../file.hpp"
+#include "../gawl/wayland/eglobject.hpp"
 #include "../gawl/wayland/window.hpp"
 #include "../record-context.hpp"
 #include "../v4l2.hpp"
@@ -26,8 +28,10 @@ struct CameraParams {
 class Camera {
   private:
     struct Loader {
-        coop::SingleEvent event;
-        coop::TaskHandle  task;
+        gawl::EGLSubObject context;
+        coop::Thread       thread;
+        coop::SingleEvent  event;
+        coop::TaskHandle   task;
     };
 
     CameraParams                    params;
