@@ -3,6 +3,7 @@
 #include "gawl/window-no-touch-callbacks.hpp"
 #include "graphics-wrapper.hpp"
 #include "timer.hpp"
+#include "ui.hpp"
 
 enum class Command {
     None,
@@ -22,18 +23,18 @@ struct WindowContext {
 };
 
 class WindowCallbacks : public gawl::WindowNoTouchCallbacks {
-  private:
-    static constexpr auto error_value = false;
-
-    WindowContext    context;
-    gawl::TextRender font;
-    gawl::Point      cursor;
-    Timer            record_timer;
-    int              shutter_anim = 0;
-    bool             movie        = false;
-    bool             recording    = false;
-
   public:
+    WindowContext                        context;
+    gawl::TextRender                     font;
+    gawl::Point                          cursor;
+    std::vector<std::unique_ptr<Button>> buttons;
+    Timer                                record_timer;
+    int                                  shutter_anim = 0;
+    bool                                 movie        = false;
+    bool                                 recording    = false;
+
+    auto draw_button(const gawl::Point& base, std::string_view label, bool pressed, bool active, gawl::WrappedText& wrapped_text) -> void;
+
     auto refresh() -> void override;
     auto on_created(gawl::Window* window) -> coop::Async<bool> override;
     auto on_pointer(gawl::Point pos) -> coop::Async<bool> override;
@@ -42,5 +43,6 @@ class WindowCallbacks : public gawl::WindowNoTouchCallbacks {
     auto get_window() const -> gawl::Window*;
     auto get_context() -> WindowContext&;
 
+    WindowCallbacks();
     ~WindowCallbacks();
 };

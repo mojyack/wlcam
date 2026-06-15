@@ -298,33 +298,6 @@ auto stop_stream(const int fd) -> bool {
     return xioctl(fd, VIDIOC_STREAMOFF, &type) != -1;
 }
 
-auto query_controls(const int fd) -> std::vector<v4l2_queryctrl> {
-    auto query = v4l2_queryctrl();
-    query.id   = V4L2_CTRL_CLASS_USER | V4L2_CTRL_FLAG_NEXT_CTRL;
-    while(0 == ioctl(fd, VIDIOC_QUERYCTRL, &query)) {
-        if(V4L2_CTRL_ID2CLASS(query.id) != V4L2_CTRL_CLASS_USER)
-            break;
-        if(query.flags & V4L2_CTRL_FLAG_DISABLED)
-            continue;
-
-        query.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
-    }
-
-    auto ret = std::vector<v4l2_queryctrl>();
-    for(auto id = V4L2_CID_BASE + 1; id < V4L2_CID_LASTP1; id += 1) {
-        query.id = id;
-        if(xioctl(fd, VIDIOC_QUERYCTRL, &query) == 0) {
-            ret.emplace_back(query);
-        }
-    }
-    return ret;
-}
-
-auto set_control(const int fd, const uint32_t cid, const int32_t value) -> bool {
-    auto ctrl = v4l2_control{cid, value};
-    return xioctl(fd, VIDIOC_S_CTRL, &ctrl) != -1;
-}
-
 auto set_selection_subdev(const int fd, const uint32_t pad_index, const uint32_t target, const int32_t x, const int32_t y, const uint32_t w, const uint32_t h) -> bool {
     auto sel = v4l2_subdev_selection();
 
@@ -335,5 +308,137 @@ auto set_selection_subdev(const int fd, const uint32_t pad_index, const uint32_t
     sel.r      = v4l2_rect{x, y, w, h};
 
     return xioctl(fd, VIDIOC_SUBDEV_S_SELECTION, &sel) == 0;
+}
+
+// control
+
+auto enumerate_menu(const int fd, const v4l2_queryctrl& queryctrl) -> std::vector<ControlMenu> {
+    auto ret       = std::vector<ControlMenu>();
+    auto querymenu = v4l2_querymenu();
+
+    querymenu.id = queryctrl.id;
+
+    for(querymenu.index = queryctrl.minimum; querymenu.index <= (uint32_t)queryctrl.maximum; querymenu.index += 1) {
+        if(xioctl(fd, VIDIOC_QUERYMENU, &querymenu) == 0) {
+            auto menu = ControlMenu();
+            memcpy(menu.name, querymenu.name, 32);
+            menu.index = querymenu.index;
+            ret.emplace_back(menu);
+        }
+    }
+
+    return ret;
+}
+
+auto parse_queryctrl(const v4l2_queryctrl& ctrl) -> std::optional<Control> {
+    if(ctrl.flags & V4L2_CTRL_FLAG_DISABLED) {
+        return std::nullopt;
+    }
+
+    auto ret = Control{
+        .id       = ctrl.id,
+        .max      = ctrl.maximum,
+        .min      = ctrl.minimum,
+        .step     = ctrl.step,
+        .ro       = bool(ctrl.flags & V4L2_CTRL_FLAG_READ_ONLY),
+        .inactive = bool(ctrl.flags & V4L2_CTRL_FLAG_INACTIVE),
+    };
+
+    switch(ctrl.type) {
+    case V4L2_CTRL_TYPE_INTEGER:
+        ret.type = ControlType::Int;
+        break;
+    case V4L2_CTRL_TYPE_BOOLEAN:
+        ret.type = ControlType::Bool;
+        break;
+    case V4L2_CTRL_TYPE_MENU:
+        ret.type = ControlType::Menu;
+        break;
+    default:
+        return std::nullopt;
+    }
+
+    memcpy(ret.name, ctrl.name, sizeof(ret.name));
+
+    return ret;
+}
+
+auto query_control(const int fd, const uint32_t id) -> std::optional<Control> {
+    auto queryctrl = v4l2_queryctrl();
+
+    queryctrl.id = id;
+
+    ensure(xioctl(fd, VIDIOC_QUERYCTRL, &queryctrl) == 0);
+    auto ret = parse_queryctrl(queryctrl);
+    if(!ret) {
+        return std::nullopt;
+    }
+
+    unwrap(current, get_control(fd, queryctrl.id));
+    ret->current = current;
+    if(queryctrl.type == V4L2_CTRL_TYPE_MENU) {
+        ret->menus = enumerate_menu(fd, queryctrl);
+    }
+
+    return ret;
+}
+
+auto query_class_controls(const int fd, const uint32_t control_class, std::vector<Control>& ret) -> void {
+    auto queryctrl = v4l2_queryctrl();
+
+    queryctrl.id = control_class | V4L2_CTRL_FLAG_NEXT_CTRL;
+
+    while(xioctl(fd, VIDIOC_QUERYCTRL, &queryctrl) == 0) {
+        if(V4L2_CTRL_ID2CLASS(queryctrl.id) != control_class) {
+            break;
+        }
+        if(auto ctrl = parse_queryctrl(queryctrl)) {
+            unwrap(current, get_control(fd, queryctrl.id));
+            ctrl->current = current;
+            if(queryctrl.type == V4L2_CTRL_TYPE_MENU) {
+                ctrl->menus = enumerate_menu(fd, queryctrl);
+            }
+            ret.emplace_back(std::move(*ctrl));
+        }
+        queryctrl.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
+    }
+}
+
+auto query_controls(const int fd) -> std::vector<Control> {
+    auto ret = std::vector<Control>();
+    query_class_controls(fd, V4L2_CTRL_CLASS_USER, ret);
+    query_class_controls(fd, V4L2_CTRL_CLASS_CODEC, ret);
+    query_class_controls(fd, V4L2_CTRL_CLASS_CAMERA, ret);
+    query_class_controls(fd, V4L2_CTRL_CLASS_FM_TX, ret);
+    query_class_controls(fd, V4L2_CTRL_CLASS_FLASH, ret);
+    query_class_controls(fd, V4L2_CTRL_CLASS_JPEG, ret);
+    query_class_controls(fd, V4L2_CTRL_CLASS_IMAGE_SOURCE, ret);
+    query_class_controls(fd, V4L2_CTRL_CLASS_IMAGE_PROC, ret);
+    query_class_controls(fd, V4L2_CTRL_CLASS_DV, ret);
+    query_class_controls(fd, V4L2_CTRL_CLASS_FM_RX, ret);
+    query_class_controls(fd, V4L2_CTRL_CLASS_RF_TUNER, ret);
+    query_class_controls(fd, V4L2_CTRL_CLASS_DETECT, ret);
+    query_class_controls(fd, V4L2_CTRL_CLASS_CODEC_STATELESS, ret);
+    query_class_controls(fd, V4L2_CTRL_CLASS_COLORIMETRY, ret);
+    return ret;
+}
+
+auto get_control(const int fd, const uint32_t id) -> std::optional<int32_t> {
+    auto control = v4l2_control();
+    control.id   = id;
+
+    ensure(xioctl(fd, VIDIOC_G_CTRL, &control) == 0);
+
+    return control.value;
+}
+
+auto set_control(const int fd, const uint32_t id, const int32_t value) -> bool {
+    auto control  = v4l2_control();
+    control.id    = id;
+    control.value = value;
+
+    const auto ret = xioctl(fd, VIDIOC_S_CTRL, &control);
+    ensure(ret == 0, "{}", ret);
+    return true;
 }
 } // namespace v4l2

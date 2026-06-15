@@ -12,12 +12,12 @@ using Params = ::ipu3::Args::Params;
 template <>
 auto from_string<Params>(const char* const str) -> std::optional<Params> {
     auto elms = split(str, ",");
-    auto ret  = Params(elms.size());
+    auto ret  = Params();
     for(auto i = 0u; i < elms.size(); i += 1) {
         auto pair = split(elms[i], "=");
         ensure(pair.size() == 2);
         unwrap(value, from_chars<int>(pair[1]));
-        ret[i] = {elms[0], value};
+        ret[elms[0]] = value;
     }
     return ret;
 }

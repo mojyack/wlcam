@@ -1,12 +1,12 @@
 #pragma once
 #include <optional>
-#include <vector>
 
 #include "../args.hpp"
+#include "../util/light-map.hpp"
 
 namespace ipu3 {
 struct Args : CommonArgs {
-    using Params = std::vector<std::pair<std::string_view, int>>;
+    using Params = LightMap<std::string_view, int>;
 
     const char* cio2_devnode;
     const char* imgu_devnode;

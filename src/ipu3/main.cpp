@@ -161,41 +161,16 @@ auto main(const int argc, const char* const argv[]) -> int {
         memset(params_mmap_ptrs[i], 0, imgu_parameter_buffers[i].length);
         init_params_buffer(*params_mmap_ptrs[i], pipeline_config, bds_grid);
     }
+    params_buffers = params_mmap_ptrs; // for params.cpp
 
     // prepare gui
     auto app = gawl::WaylandApplication();
     ensure(init_yuv420sp_shader());
-
-    auto control_rows             = create_control_rows();
-    auto params_cbs               = std::shared_ptr<ParamsCallbacks>(new ParamsCallbacks());
-    params_cbs->params_array      = params_mmap_ptrs.data();
-    params_cbs->params_array_size = params_mmap_ptrs.size();
-    auto vcw_cbs                  = std::shared_ptr<vcw::Callbacks>(new vcw::Callbacks(control_rows, params_cbs));
-
-    // apply initial parameters
-    for(const auto& [key, value] : args.ipu3_params) {
-        auto found = false;
-        for(const auto& row : control_rows) {
-            auto ptr = row.get<vcw::ControlPtr>();
-            if(ptr == nullptr) {
-                continue;
-            }
-            auto& ctrl = *ptr->get();
-            if(ctrl.get_label() != key) {
-                continue;
-            }
-            params_cbs->set_control_value(ctrl, value);
-            found = true;
-            break;
-        }
-        if(!found) {
-            WARN("unknown parameter: {}", key);
-        }
-    }
-
     auto viewfinder_cbs = std::shared_ptr<IPU3WindowCallbacks>(new IPU3WindowCallbacks());
-    running             = true;
-    camera_thread       = std::thread([&]() -> bool {
+    create_buttons(viewfinder_cbs->buttons, args.ipu3_params);
+
+    running       = true;
+    camera_thread = std::thread([&]() -> bool {
         constexpr auto error_value = false;
 
         viewfinder_cbs->window_ready.wait();
@@ -295,7 +270,6 @@ auto main(const int argc, const char* const argv[]) -> int {
 
     auto runner = coop::Runner();
     runner.push_task(app.open_window({.title = "wlcam"}, std::move(viewfinder_cbs)));
-    runner.push_task(app.open_window({.title = "ipu3 parameters", .manual_refresh = true}, std::move(vcw_cbs)));
     runner.push_task(app.run());
     runner.run();
 

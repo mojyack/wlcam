@@ -4,6 +4,7 @@ uvc_files = files(
     '../jpeg.cpp',
     '../pulse-recorder/pulse.cpp',
     '../record-context.cpp',
+    '../ui-v4l2.cpp',
     '../v4l2.cpp',
     '../video-encoder/converter.cpp',
     '../video-encoder/encoder.cpp',

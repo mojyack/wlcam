@@ -1,6 +1,7 @@
 #include "../file.hpp"
 #include "../gawl/wayland/application.hpp"
 #include "../macros/unwrap.hpp"
+#include "../ui-v4l2.hpp"
 #include "../v4l2.hpp"
 #include "../window.hpp"
 #include "args.hpp"
@@ -77,6 +78,36 @@ auto main(const int argc, const char* const* const argv) -> int {
         .file_manager   = &file_manager,
         .args           = &args,
     };
+
+    auto bundle = V4L2ControlBundle{
+        .fd    = fd,
+        .ctrls = v4l2::query_controls(fd),
+    };
+    for(auto& ctrl : bundle.ctrls) {
+        auto element = (V4L2Element*)(nullptr);
+        auto button  = (Button*)(nullptr);
+        switch(ctrl.type) {
+        case v4l2::ControlType::Int: {
+            const auto btn = new V4L2SliderButton();
+            element        = &btn->slider;
+            button         = btn;
+        } break;
+        case v4l2::ControlType::Bool: {
+            const auto btn = new V4L2Button();
+            element        = btn;
+            button         = btn;
+            btn->pressed   = ctrl.current;
+        } break;
+        case v4l2::ControlType::Menu: {
+            const auto btn = new V4L2MenuButton();
+            element        = &btn->menu;
+            button         = btn;
+        } break;
+        }
+        element->bundle = &bundle;
+        element->ctrl   = &ctrl;
+        cbs->buttons.emplace_back(button);
+    }
 
     auto runner = coop::Runner();
     runner.push_task(app.run());

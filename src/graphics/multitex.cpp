@@ -61,7 +61,7 @@ auto MultiTex::draw(gawl::Screen& screen, const gawl::Point& point) -> void {
 }
 
 auto MultiTex::draw_rect(gawl::Screen& screen, const gawl::Rectangle& rect) -> void {
-    shader->move_vertices(screen, gawl::Rectangle(rect).magnify(screen.get_scale()), false);
+    shader->move_vertices(screen, rect * screen.get_scale(), false);
     do_draw(screen);
 }
 
@@ -73,7 +73,7 @@ auto MultiTex::draw_transformed(gawl::Screen& screen, const std::array<gawl::Poi
     auto       v = vertices;
     const auto s = screen.get_scale();
     for(auto& p : v) {
-        p.magnify(s);
+        p *= s;
     }
     shader->move_vertices(screen, v, false);
     do_draw(screen);

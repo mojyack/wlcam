@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "params.hpp"
 #include "uapi.hpp"
 
@@ -48,46 +50,102 @@ auto apply_shd_lut(ipu3_uapi_params& params, const double gain) -> void {
         }
     }
 }
+
+enum class ControlKind {
+    WBGainR,
+    WBGainB,
+    WBGainGR,
+    WBGainGB,
+    BLCR,
+    BLCB,
+    BLCGR,
+    BLCGB,
+    GammaCollection,
+    LensShading,
+    User1,
+    User2,
+    User3,
+    User4,
+    User5,
+};
+
+struct ControlSlider : Slider {
+    std::string label;
+    ControlKind kind;
+    int         min;
+    int         max;
+    int         cur;
+
+    auto get_range() const -> std::array<int, 2> override {
+        return {min, max};
+    }
+
+    auto get_value() const -> int override {
+        return cur;
+    }
+
+    auto set_value(int value) -> void override {
+        cur = value;
+        for(const auto p : params_buffers) {
+            switch(kind) {
+            case ControlKind::WBGainR:
+                p->acc_param.bnr.wb_gains.r = value;
+                break;
+            case ControlKind::WBGainB:
+                p->acc_param.bnr.wb_gains.b = value;
+                break;
+            case ControlKind::WBGainGR:
+                p->acc_param.bnr.wb_gains.gr = value;
+                break;
+            case ControlKind::WBGainGB:
+                p->acc_param.bnr.wb_gains.gb = value;
+                break;
+            case ControlKind::BLCR:
+                p->obgrid_param.r = value;
+                break;
+            case ControlKind::BLCB:
+                p->obgrid_param.b = value;
+                break;
+            case ControlKind::BLCGR:
+                p->obgrid_param.gr = value;
+                break;
+            case ControlKind::BLCGB:
+                p->obgrid_param.gb = value;
+                break;
+            case ControlKind::GammaCollection:
+                apply_gamma_lut(*p, 1 + value / 128.0);
+                break;
+            case ControlKind::LensShading:
+                apply_shd_lut(*p, 1 + value / 128.0);
+                break;
+            case ControlKind::User1:
+            case ControlKind::User2:
+            case ControlKind::User3:
+            case ControlKind::User4:
+            case ControlKind::User5:
+                break;
+            }
+        }
+    }
+};
+
+struct SliderButton : Button {
+    ControlSlider slider;
+
+    auto get_label() -> std::string_view override {
+        return slider.label;
+    }
+
+    auto on_pressed() -> void override {
+        if(expand.get_index() == Expand::index_of<Slider*>) {
+            expand.reset();
+            pressed = false;
+        } else {
+            expand.emplace<Slider*>(&slider);
+        }
+    }
+};
 } // namespace
-
-auto Control::is_active() -> bool {
-    return true;
-}
-
-auto Control::get_type() -> vcw::ControlType {
-    return vcw::ControlType::Int;
-}
-
-auto Control::get_label() -> std::string_view {
-    return label;
-}
-
-auto Control::get_range() -> vcw::ValueRange {
-    return {min, max, 1};
-}
-
-auto Control::get_current() -> int {
-    return current;
-}
-
-auto Control::get_menu_size() -> size_t {
-    return 0;
-}
-
-auto Control::get_menu_label(const size_t /*index*/) -> std::string_view {
-    return "";
-}
-
-auto Control::get_menu_value(const size_t /*index*/) -> int {
-    return 0;
-}
-
-Control::Control(std::string label, const ControlKind kind, const int min, const int max, const int current)
-    : label(std::move(label)),
-      kind(kind),
-      min(min),
-      max(max),
-      current(current) {}
 
 auto init_params_buffer(ipu3_uapi_params& params, const algo::PipeConfig& pipe_config, const ipu3_uapi_grid_config& bds_grid) -> void {
     // https://docs.kernel.org/admin-guide/media/ipu3.html
@@ -312,64 +370,30 @@ auto init_params_buffer(ipu3_uapi_params& params, const algo::PipeConfig& pipe_c
     }
 }
 
-auto create_control_rows() -> std::vector<vcw::Row> {
-    auto ret = std::vector<vcw::Row>();
-    ret.emplace_back(vcw::Row::create<vcw::ControlPtr>(new Control("wb_gains.r", ControlKind::WBGainR, 0, 0x1FFF, 16)));
-    ret.emplace_back(vcw::Row::create<vcw::ControlPtr>(new Control("wb_gains.b", ControlKind::WBGainB, 0, 0x1FFF, 16)));
-    ret.emplace_back(vcw::Row::create<vcw::ControlPtr>(new Control("wb_gains.gr", ControlKind::WBGainGR, 0, 0x1FFF, 16)));
-    ret.emplace_back(vcw::Row::create<vcw::ControlPtr>(new Control("wb_gains.gb", ControlKind::WBGainGB, 0, 0x1FFF, 16)));
-    ret.emplace_back(vcw::Row::create<vcw::ControlPtr>(new Control("obgrid_param.r", ControlKind::BLCR, -2048, 2047, 64)));
-    ret.emplace_back(vcw::Row::create<vcw::ControlPtr>(new Control("obgrid_param.b", ControlKind::BLCB, -2048, 2047, 64)));
-    ret.emplace_back(vcw::Row::create<vcw::ControlPtr>(new Control("obgrid_param.gr", ControlKind::BLCGR, -2048, 2047, 64)));
-    ret.emplace_back(vcw::Row::create<vcw::ControlPtr>(new Control("obgrid_param.gb", ControlKind::BLCGB, -2048, 2047, 64)));
-    ret.emplace_back(vcw::Row::create<vcw::ControlPtr>(new Control("gamma", ControlKind::GammaCollection, 0, 512, 16)));
-    ret.emplace_back(vcw::Row::create<vcw::ControlPtr>(new Control("lens shading", ControlKind::LensShading, -128, 128, 0)));
-    ret.emplace_back(vcw::Row::create<vcw::QuitButton>());
-    return ret;
-}
-
-auto ParamsCallbacks::set_control_value(vcw::Control& control, int value) -> void {
-    auto& ctrl   = *std::bit_cast<Control*>(&control);
-    ctrl.current = value;
-    for(auto i = 0u; i < params_array_size; i += 1) {
-        auto& params = *params_array[i];
-        switch(ctrl.kind) {
-        case ControlKind::WBGainR:
-            params.acc_param.bnr.wb_gains.r = value;
-            break;
-        case ControlKind::WBGainB:
-            params.acc_param.bnr.wb_gains.b = value;
-            break;
-        case ControlKind::WBGainGR:
-            params.acc_param.bnr.wb_gains.gr = value;
-            break;
-        case ControlKind::WBGainGB:
-            params.acc_param.bnr.wb_gains.gb = value;
-            break;
-        case ControlKind::BLCR:
-            params.obgrid_param.r = value;
-            break;
-        case ControlKind::BLCB:
-            params.obgrid_param.b = value;
-            break;
-        case ControlKind::BLCGR:
-            params.obgrid_param.gr = value;
-            break;
-        case ControlKind::BLCGB:
-            params.obgrid_param.gb = value;
-            break;
-        case ControlKind::GammaCollection:
-            apply_gamma_lut(params, 1 + value / 128.0);
-            break;
-        case ControlKind::LensShading:
-            apply_shd_lut(params, 1 + value / 128.0);
-            break;
-        case ControlKind::User1:
-        case ControlKind::User2:
-        case ControlKind::User3:
-        case ControlKind::User4:
-        case ControlKind::User5:
-            break;
+auto create_buttons(std::vector<std::unique_ptr<Button>>& buttons, const LightMap<std::string_view, int>& inits) -> void {
+    const auto create_button = [&inits](std::string label, ControlKind kind, int min, int max, int cur) -> Button* {
+        if(auto i = inits.find(label); i != inits.end()) {
+            cur = i->second;
         }
-    }
+
+        const auto button    = new SliderButton();
+        button->slider.label = std::move(label);
+        button->slider.kind  = kind;
+        button->slider.min   = min;
+        button->slider.max   = max;
+        button->slider.cur   = cur;
+
+        button->slider.set_value(cur);
+
+        return button;
+    };
+    buttons.emplace_back(create_button("wb_gains.r", ControlKind::WBGainR, 0, 0x1FFF, 16));
+    buttons.emplace_back(create_button("wb_gains.gr", ControlKind::WBGainGR, 0, 0x1FFF, 16));
+    buttons.emplace_back(create_button("wb_gains.gb", ControlKind::WBGainGB, 0, 0x1FFF, 16));
+    buttons.emplace_back(create_button("obgrid_param.r", ControlKind::BLCR, -2048, 2047, 64));
+    buttons.emplace_back(create_button("obgrid_param.b", ControlKind::BLCB, -2048, 2047, 64));
+    buttons.emplace_back(create_button("obgrid_param.gr", ControlKind::BLCGR, -2048, 2047, 64));
+    buttons.emplace_back(create_button("obgrid_param.gb", ControlKind::BLCGB, -2048, 2047, 64));
+    buttons.emplace_back(create_button("gamma", ControlKind::GammaCollection, 0, 512, 16));
+    buttons.emplace_back(create_button("lens shading", ControlKind::LensShading, -128, 128, 0));
 }

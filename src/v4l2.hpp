@@ -55,7 +55,38 @@ auto dequeue_buffer(int fd, v4l2_buf_type buffer_type) -> std::optional<uint32_t
 auto dequeue_buffer_mp(int fd, v4l2_buf_type buffer_type, v4l2_memory memory_type) -> std::optional<uint32_t>;
 auto start_stream(int fd, v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE) -> bool;
 auto stop_stream(int fd) -> bool;
-auto query_controls(int fd) -> std::vector<v4l2_queryctrl>;
-auto set_control(int fd, uint32_t cid, int32_t value) -> bool;
 auto set_selection_subdev(int fd, uint32_t pad_index, uint32_t target, int32_t x, int32_t y, uint32_t w, uint32_t h) -> bool;
+
+// control
+enum class ControlType {
+    Int,
+    Bool,
+    Menu,
+};
+
+struct ControlMenu {
+    char     name[32];
+    uint32_t index;
+};
+
+struct Control {
+    uint32_t    id;
+    ControlType type;
+    char        name[32];
+    int32_t     max;
+    int32_t     min;
+    int32_t     step;
+    int32_t     current;
+
+    std::vector<ControlMenu> menus;
+
+    // flags
+    bool ro;
+    bool inactive;
+};
+
+auto query_control(int fd, uint32_t id) -> std::optional<Control>;
+auto query_controls(int fd) -> std::vector<Control>;
+auto get_control(int fd, uint32_t id) -> std::optional<int32_t>;
+auto set_control(int fd, uint32_t id, int32_t value) -> bool;
 } // namespace v4l2

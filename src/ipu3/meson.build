@@ -9,7 +9,6 @@ ipu3_files = files(
     '../record-context.cpp',
     '../udev.cpp',
     '../v4l2.cpp',
-    '../vcw/window.cpp',
     '../video-encoder/converter.cpp',
     '../video-encoder/encoder.cpp',
     '../window.cpp',
