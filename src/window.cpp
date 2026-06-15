@@ -244,6 +244,15 @@ auto WindowCallbacks::refresh() -> void {
         shutter_anim -= 1;
     }
 
+    // record time
+    if(recording) {
+        const auto ms  = record_timer.elapsed<std::chrono::milliseconds>();
+        const auto sec = ms / 1000;
+        const auto min = sec / 60;
+        auto       str = std::format("{:02d}:{:02d}.{:03d}", min, sec % 60, ms % 1000);
+        font.draw_fit_rect(*window, preview_rect, colors::palette_white, str, {.align_x = gawl::Align::Right, .align_y = gawl::Align::Right});
+    }
+
     // ui elements
     auto base = rule.buttons_origin(window->window_size);
     for(const auto& button : buttons) {
