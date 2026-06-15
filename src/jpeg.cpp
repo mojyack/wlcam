@@ -82,7 +82,9 @@ auto decode_jpeg_to_yuvp(const std::byte* const ptr, const size_t len, const siz
     auto buf_u = std::vector<std::byte>(bufsize_u);
     auto buf_v = std::vector<std::byte>(bufsize_v);
     auto buf   = std::array{buf_y.data(), buf_u.data(), buf_v.data()};
-    ensure(tjDecompressToYUVPlanes(tj.get(), (unsigned char*)ptr, len, (unsigned char**)(buf.data()), width / downscale_factor, NULL, height / downscale_factor, 0) == 0);
+
+    const auto r = tjDecompressToYUVPlanes(tj.get(), (unsigned char*)ptr, len, (unsigned char**)(buf.data()), width / downscale_factor, NULL, height / downscale_factor, 0);
+    ensure(r == 0, "{} {}", tjGetErrorCode(tj.get()), tjGetErrorStr());
 
     return DecodeResult{
         width,
