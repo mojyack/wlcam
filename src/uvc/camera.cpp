@@ -31,13 +31,18 @@ loop:
         coop_bail("pixelformat bug");
     }
     const auto byte_array = Frame::ByteArray{static_cast<std::byte*>(params.buffers[index].start), params.buffers[index].length};
-    coop_ensure(co_await coop::run_blocking([&, window = params.window]() {
+
+    const auto ret = co_await coop::run_blocking([&, window = params.window]() {
         auto       window_context = window->fork_context();
         const auto ret            = frame->load_texture(byte_array);
         window_context.flush();
         return ret;
-    }));
+    });
     coop_ensure(v4l2::queue_buffer(params.fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, index));
+    if(!ret) {
+        WARN("failed to decode image");
+        goto loop;
+    }
 
     if(front_frame_count < frame_count) {
         front_frame_count = frame_count;
