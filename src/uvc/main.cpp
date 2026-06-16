@@ -48,8 +48,7 @@ auto main(const int argc, const char* const* const argv) -> int {
     }
     ensure(v4l2::start_stream(fd));
 
-    auto file_manager = FileManager(args.savedir);
-    auto app          = gawl::WaylandApplication();
+    auto app = gawl::WaylandApplication();
 
     switch(args.pixel_format.data) {
     case v4l2::fourcc("MJPG"):
@@ -75,7 +74,6 @@ auto main(const int argc, const char* const* const argv) -> int {
         .buffers        = buffers.data(),
         .window         = nullptr, // set later
         .window_context = &cbs->get_context(),
-        .file_manager   = &file_manager,
         .args           = &args,
     };
 

@@ -58,7 +58,7 @@ loop:
     // proc command
     switch(std::exchange(params.window_context->camera_command, Command::None)) {
     case Command::TakePhoto: {
-        const auto path = params.file_manager->get_next_path().string() + ".jpg";
+        const auto path = std::format("{}/{}.jpg", params.args->savedir, get_save_filename());
 
         coop_ensure(co_await loader.thread.run([&]() {
             return frame->save_to_jpeg(byte_array, path.data());
@@ -67,7 +67,7 @@ loop:
         params.window_context->ui_command = Command::TakePhotoDone;
     } break;
     case Command::StartRecording: {
-        const auto path = params.file_manager->get_next_path().string() + ".mkv";
+        const auto path = std::format("{}/{}.mkv", params.args->savedir, get_save_filename());
 
         co_unwrap_v(pix_fmt, frame->get_pixel_format());
         record_context.reset(new RecordContext());

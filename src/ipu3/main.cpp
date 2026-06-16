@@ -176,7 +176,6 @@ auto main(const int argc, const char* const argv[]) -> int {
         viewfinder_cbs->window_ready.wait();
         auto&      context        = viewfinder_cbs->get_context();
         auto       window_context = viewfinder_cbs->get_window()->fork_context();
-        auto       file_manager   = FileManager(args.savedir);
         auto       record_context = std::unique_ptr<RecordContext>();
         const auto output_width   = imgu_output_fmt.fmt.pix_mp.width;
         const auto output_height  = imgu_output_fmt.fmt.pix_mp.height;
@@ -224,7 +223,7 @@ auto main(const int argc, const char* const argv[]) -> int {
         // process commands while flushing texture
         switch(std::exchange(context.camera_command, Command::None)) {
         case Command::TakePhoto: {
-            const auto path = file_manager.get_next_path().string() + ".jpg";
+            const auto path = std::format("{}/{}.jpg", args.savedir, get_save_filename());
 
             const auto byte_array = Frame::ByteArray{static_cast<std::byte*>(output_mmap_ptrs[i]), imgu_output_buffers[i].length};
             auto       frame      = YUV420SPFrame(output_width, output_height, output_stride);
@@ -233,7 +232,7 @@ auto main(const int argc, const char* const argv[]) -> int {
             context.ui_command = Command::TakePhotoDone;
         } break;
         case Command::StartRecording: {
-            const auto path = file_manager.get_next_path().string() + ".mkv";
+            const auto path = std::format("{}/{}.mkv", args.savedir, get_save_filename());
 
             unwrap_v(pix_fmt, frame->get_pixel_format());
             auto rc = std::unique_ptr<RecordContext>(new RecordContext());

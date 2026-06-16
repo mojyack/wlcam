@@ -21,7 +21,6 @@ struct CameraParams {
     v4l2::Buffer*        buffers;
     gawl::WaylandWindow* window;
     WindowContext*       window_context;
-    FileManager*         file_manager;
     const CommonArgs*    args;
 };
 
