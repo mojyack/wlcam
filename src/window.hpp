@@ -4,6 +4,7 @@
 #include "graphics-wrapper.hpp"
 #include "timer.hpp"
 #include "ui.hpp"
+#include "util/variant.hpp"
 
 enum class Command {
     None,
@@ -22,12 +23,31 @@ struct WindowContext {
     int                    capture_rate = 0;
 };
 
+struct PressedButton {
+    Button* button;
+};
+
+struct PressedMenu {
+    Button* button;
+    Menu*   menu;
+    size_t  index;
+};
+
+struct PressedSlider {
+    Button* button;
+    Slider* slider;
+};
+
+using Pressed = Variant<PressedButton, PressedMenu, PressedSlider>;
+
 class WindowCallbacks : public gawl::WindowNoTouchCallbacks {
   public:
     WindowContext                        context;
     gawl::TextRender                     font;
     gawl::Point                          cursor;
     std::vector<std::unique_ptr<Button>> buttons;
+    Pressed                              pressed;
+    int                                  layout = 0;
     Timer                                record_timer;
     FPSCounter                           render_counter;
     int                                  render_rate  = 0;

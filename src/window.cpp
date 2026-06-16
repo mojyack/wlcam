@@ -5,7 +5,6 @@
 #include "gawl/window.hpp"
 #include "macros/coop-unwrap.hpp"
 #include "ui.hpp"
-#include "util/variant.hpp"
 #include "window.hpp"
 
 namespace colors {
@@ -32,6 +31,8 @@ constexpr auto slider_bg = palette_3;
 constexpr auto button_size          = gawl::Point{48, 48};
 constexpr auto button_shadow_offset = gawl::Point{4, 4};
 constexpr auto button_label_size    = 8;
+
+constexpr auto info_font_size = 16;
 
 // layout
 
@@ -98,8 +99,6 @@ const auto rules       = std::array{
     (LayoutRule*)&rule_left,
 };
 
-auto button_layout = 0;
-
 struct TakeButton : Button {
     WindowCallbacks* window;
     bool             last_movie = false;
@@ -144,13 +143,15 @@ struct ModeButton : Button {
 };
 
 struct LayoutButton : Button {
+    WindowCallbacks* window;
+
     auto get_label() -> std::string_view override {
         return "Layout";
     }
 
     auto on_pressed() -> void override {
-        button_layout = (button_layout + 1) % rules.size();
-        pressed       = false;
+        window->layout = (window->layout + 1) % rules.size();
+        pressed        = false;
     }
 };
 
@@ -170,27 +171,6 @@ struct ExitButton : Button {
 auto in_rect(const gawl::Rectangle& rect, const gawl::Point& point) -> bool {
     return rect.a.x <= point.x && rect.b.x > point.x && rect.a.y <= point.y && rect.b.y > point.y;
 }
-
-struct PressedButton {
-    Button* button;
-};
-
-struct PressedMenu {
-    Button* button;
-    Menu*   menu;
-    size_t  index;
-};
-
-struct PressedSlider {
-    Button* button;
-    Slider* slider;
-};
-
-using Pressed = Variant<PressedButton, PressedMenu, PressedSlider>;
-
-auto pressed = Pressed();
-
-constexpr auto bottom_bar_height = 32;
 
 auto WindowCallbacks::draw_button(const gawl::Point& base, const std::string_view label, const bool pressed, const bool active, gawl::WrappedText& wrapped_text) -> void {
     const auto rect_size   = button_size - button_shadow_offset;
@@ -235,7 +215,7 @@ auto WindowCallbacks::refresh() -> void {
     gawl::clear_screen(colors::bg);
     gawl::mask_alpha();
 
-    const auto& rule = *rules[button_layout];
+    const auto& rule = *rules[layout];
 
     const auto preview_rect = rule.preview_rect(window->window_size);
     const auto frame        = context.frame;
@@ -324,7 +304,7 @@ auto WindowCallbacks::refresh() -> void {
 
 auto WindowCallbacks::on_created(gawl::Window* /*window*/) -> coop::Async<bool> {
     coop_unwrap_mut(font_path, gawl::find_fontpath_from_name("Noto Sans CJK JP"));
-    font.init({std::move(font_path)}, bottom_bar_height * 0.8);
+    font.init({std::move(font_path)}, info_font_size);
     co_return true;
 }
 
@@ -341,7 +321,7 @@ auto WindowCallbacks::on_pointer(const gawl::Point pos) -> coop::Async<bool> {
     } break;
     case Pressed::index_of<PressedMenu>: {
         const auto& press = pressed.as<PressedMenu>();
-        const auto& rule  = *rules[button_layout];
+        const auto& rule  = *rules[layout];
         const auto& base  = press.button->displayed_pos;
         const auto  mbase = base + rule.menu_step * press.index;
         const auto  rect  = gawl::Rectangle{mbase, mbase + button_size};
@@ -404,7 +384,7 @@ auto WindowCallbacks::on_click(const uint32_t button, const gawl::ButtonState st
         switch(button->expand.get_index()) {
         case Expand::index_of<Menu*>: {
             auto&       menu  = *button->expand.as<Menu*>();
-            const auto& rule  = *rules[button_layout];
+            const auto& rule  = *rules[layout];
             auto        mbase = button->displayed_pos + rule.menu_step;
             for(auto i = 0uz; i < menu.get_count(); i += 1) {
                 const auto rect = gawl::Rectangle{mbase, mbase + button_size};
@@ -437,18 +417,20 @@ auto WindowCallbacks::get_context() -> WindowContext& {
 }
 
 WindowCallbacks::WindowCallbacks() {
-    auto take   = new TakeButton();
-    auto mode   = new ModeButton();
-    auto layout = new LayoutButton();
-    auto exit   = new ExitButton();
-
+    auto take    = new TakeButton();
     take->window = this;
-    mode->window = this;
-    exit->window = this;
-
     buttons.emplace_back(take);
+
+    auto mode    = new ModeButton();
+    mode->window = this;
     buttons.emplace_back(mode);
+
+    auto layout    = new LayoutButton();
+    layout->window = this;
     buttons.emplace_back(layout);
+
+    auto exit    = new ExitButton();
+    exit->window = this;
     buttons.emplace_back(exit);
 }
 
