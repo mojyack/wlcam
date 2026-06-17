@@ -1,3 +1,4 @@
+#include <cstring>
 #include <poll.h>
 #include <sys/ioctl.h>
 #include <unistd.h>

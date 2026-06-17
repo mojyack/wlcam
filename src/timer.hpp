@@ -1,9 +1,10 @@
 #pragma once
 #include <chrono>
+#include <utility>
 
 class Timer {
   private:
-    std::chrono::steady_clock::time_point time;
+    std::chrono::system_clock::time_point time;
 
   public:
     auto reset() -> void {
