@@ -134,11 +134,12 @@ struct ModeButton : Button {
     }
 
     auto on_pressed() -> void override {
-        if(window->movie && window->recording) {
-            window->context.camera_command = Command::StopRecording;
-        }
         window->movie = !window->movie;
         pressed       = false;
+    }
+
+    auto is_active() -> bool override {
+        return !window->recording;
     }
 };
 
