@@ -3,7 +3,7 @@
 
 template <class... Args>
 auto setup_common_args(CommonArgs& args, args::Parser<Args...>& parser) -> void {
-    parser.kwarg(&args.savedir, {"-o", "--output"}, "PATH", "output directory");
+    parser.kwarg(&args.savedir, {"-o", "--output"}, "PATH", "output directory", {.state = args::State::DefaultValue});
     parser.kwarg(&args.width, {"--width"}, "WIDTH", "horizontal resolution", {.state = args::State::DefaultValue});
     parser.kwarg(&args.height, {"--height"}, "HEIGHT", "vertical resolution", {.state = args::State::DefaultValue});
     parser.kwarg(&args.video_codec, {"--video-codec"}, "CODEC", "video codec for recording(see ffmpeg -codecs)", {.state = args::State::DefaultValue});
